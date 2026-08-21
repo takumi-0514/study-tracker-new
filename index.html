@@ -1,0 +1,3376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyTracker Pro - 勉強時間管理</title>
+  
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./study_timer.png" type="image/png">
+  <link rel="apple-touch-icon" href="./study_timer.png">
+  <meta name="theme-color" content="#0f172a">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+    @media (max-width: 768px) {
+      main {
+        padding-bottom: 95px !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col md:flex-row relative overflow-x-hidden">
+
+  <!-- Sidebar Navigation (Desktop Only) -->
+  <aside class="hidden md:flex w-64 bg-slate-900 text-slate-100 flex-shrink-0 flex-col justify-between p-4 shadow-lg h-screen sticky top-0 z-20">
+    <div>
+      <div class="flex items-center gap-3 px-2 py-4 border-b border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+          <img src="./study_timer.png" alt="Logo" class="w-full h-full object-cover">
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight">StudyTracker</h1>
+          <span class="text-xs text-indigo-400 font-medium">Pro Dashboard</span>
+        </div>
+      </div>
+
+      <nav class="mt-6 flex flex-col gap-1">
+        <button onclick="switchTab('timer')" id="nav-timer" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium bg-indigo-600 text-white">
+          <i data-lucide="timer" class="w-5 h-5"></i>
+          <span>タイマー / 計測</span>
+        </button>
+        <button onclick="switchTab('problem')" id="nav-problem" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+          <i data-lucide="timer" class="w-5 h-5"></i>
+          <span>問題演習タイマー</span>
+        </button>
+        <button onclick="switchTab('todos')" id="nav-todos" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+          <i data-lucide="check-square" class="w-5 h-5"></i>
+          <span>ToDoリスト</span>
+        </button>
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+          <span>ダッシュボード</span>
+        </button>
+        <button onclick="switchTab('history')" id="nav-history" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+          <i data-lucide="history" class="w-5 h-5"></i>
+          <span>学習履歴</span>
+        </button>
+        <button onclick="switchTab('subjects')" id="nav-subjects" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+          <i data-lucide="folder-kanban" class="w-5 h-5"></i>
+          <span>科目・目標設定</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Daily Quick Summary & Live Clock -->
+    <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50 mt-6 space-y-3">
+      <div>
+        <div class="text-xs text-slate-400 font-medium mb-1">本日の学習時間</div>
+        <div class="text-2xl font-bold text-indigo-300" id="sidebar-today-time">0h 0m</div>
+        <div class="w-full bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">
+          <div id="sidebar-goal-bar" class="bg-indigo-500 h-full w-0 transition-all duration-300"></div>
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1 text-right" id="sidebar-goal-text">目標: 0時間</div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-700/60 text-center">
+        <div class="text-[11px] text-slate-400 font-medium" id="sidebar-date-text">2026年 8月6日 (木)</div>
+        <div class="text-sm font-mono font-bold text-slate-200 mt-0.5" id="sidebar-clock-text">12:00:00</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Mobile Header Bar -->
+  <header class="md:hidden bg-slate-900 text-white px-4 py-2.5 flex flex-col gap-1.5 sticky top-0 z-30 shadow-md">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center overflow-hidden">
+          <img src="./study_timer.png" alt="Logo" class="w-full h-full object-cover">
+        </div>
+        <span class="font-bold text-sm">StudyTracker</span>
+      </div>
+      <div class="text-right">
+        <div class="text-[10px] text-indigo-300 font-medium" id="mobile-sidebar-date-text">8/7(金)</div>
+        <div class="text-xs font-mono font-bold" id="mobile-sidebar-clock-text">12:00:00</div>
+      </div>
+    </div>
+    <div class="bg-slate-800 px-3 py-1.5 rounded-lg flex items-center justify-between text-xs">
+      <span class="text-slate-400 text-[11px]">本日の学習: <strong class="text-indigo-300" id="mobile-sidebar-today-time">0h 0m</strong></span>
+      <span class="text-slate-400 text-[10px]" id="mobile-sidebar-goal-text">目標 0h</span>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 p-4 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full md:h-screen">
+
+    <!-- TAB 1: TIMER & LOGGING -->
+    <section id="tab-timer" class="space-y-6">
+      <header>
+        <h2 class="text-2xl font-bold text-slate-900">学習タイマー</h2>
+        <p class="text-slate-500 text-sm">集中して勉強を開始しましょう</p>
+      </header>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Timer Card -->
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 md:p-8 flex flex-col items-center justify-center">
+          
+          <!-- Mode Selector -->
+          <div class="flex flex-wrap justify-center gap-1.5 bg-slate-100 p-1 rounded-xl mb-6 text-sm font-medium">
+            <button id="mode-stopwatch-btn" onclick="setTimerMode('stopwatch')" class="px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600">ストップウォッチ</button>
+            <button id="mode-timer-btn" onclick="setTimerMode('timer')" class="px-3.5 py-2 rounded-lg transition text-slate-600">タイマー</button>
+            <button id="mode-alarm-btn" onclick="setTimerMode('alarm')" class="px-3.5 py-2 rounded-lg transition text-slate-600">時刻アラーム</button>
+            <button id="mode-pomodoro-btn" onclick="setTimerMode('pomodoro')" class="px-3.5 py-2 rounded-lg transition text-slate-600">ポモドーロ</button>
+          </div>
+
+          <!-- Normal Timer Settings Panel -->
+          <div id="normal-timer-panel" class="hidden mb-4 bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-center gap-2 text-xs">
+            <span class="font-semibold text-slate-600">カウントダウン時間:</span>
+            <input type="number" id="normal-minutes-input" min="1" max="300" value="30" class="w-16 bg-white border border-slate-200 rounded-lg p-1.5 text-center font-bold" onchange="updateNormalTimerInitial()">分
+          </div>
+
+          <!-- Time Alarm Settings Panel -->
+          <div id="alarm-timer-panel" class="hidden mb-4 bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-center gap-2 text-xs">
+            <span class="font-semibold text-slate-600"><i data-lucide="alarm-clock" class="w-4 h-4 inline mr-1 text-indigo-600"></i>終了時刻を指定:</span>
+            <input type="time" id="target-time-input" class="bg-white border border-slate-200 rounded-lg p-1.5 text-center font-bold text-sm" onchange="updateAlarmTimerTarget()">
+          </div>
+
+          <!-- Pomodoro Settings Panel -->
+          <div id="pomodoro-settings-panel" class="hidden mb-4 bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-wrap items-center justify-center gap-3 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="font-semibold text-slate-600">集中:</span>
+              <input type="number" id="pomo-work-input" min="1" max="180" value="25" class="w-14 bg-white border border-slate-200 rounded-lg p-1.5 text-center font-bold" onchange="updatePomodoroInitial()">分
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-semibold text-slate-600">休憩:</span>
+              <input type="number" id="pomo-break-input" min="1" max="60" value="5" class="w-14 bg-white border border-slate-200 rounded-lg p-1.5 text-center font-bold">分
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-semibold text-slate-600">セット数:</span>
+              <input type="number" id="pomo-sets-input" min="1" max="20" value="4" class="w-14 bg-white border border-slate-200 rounded-lg p-1.5 text-center font-bold">回
+            </div>
+            <button onclick="applyPomodoroSettings()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">適用</button>
+          </div>
+
+          <!-- Status Indicator for Loop Timers -->
+          <div id="timer-loop-status" class="hidden mb-4 text-xs font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700">
+            🔥 集中タイム (1 / 4セット)
+          </div>
+
+          <!-- Active Task Notice -->
+          <div id="active-task-banner" class="hidden mb-4 bg-indigo-50 border border-indigo-100 text-indigo-800 text-xs px-4 py-2 rounded-lg flex items-center justify-between w-full max-w-xs">
+            <span class="truncate"><strong class="font-semibold">実行中タスク:</strong> <span id="active-task-title"></span></span>
+            <button onclick="clearActiveTask()" class="text-indigo-500 hover:text-indigo-700 ml-2 font-bold">&times;</button>
+          </div>
+
+          <!-- Subject Choice for Current Timer -->
+          <div class="w-full max-w-xs mb-6">
+            <label class="block text-xs font-semibold text-slate-500 mb-2 text-center uppercase tracking-wider">学習科目 / 休憩を選択</label>
+            <select id="timer-subject-select" onchange="handleTimerSubjectChange(this.value)" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <!-- Timer Display -->
+          <div class="relative flex items-center justify-center my-2">
+            <div class="text-6xl md:text-8xl font-black tracking-tight font-mono text-slate-800 select-none" id="timer-display">
+              00:00:00
+            </div>
+          </div>
+
+          <!-- Lap / Subject Breakdown Display Panel -->
+          <div id="lap-panel" class="w-full max-w-md mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 hidden">
+            <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200 text-xs font-semibold text-slate-500">
+              <span>科目別ラップ内訳</span>
+              <span>経過時間</span>
+            </div>
+            <div id="lap-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="flex flex-wrap items-center justify-center gap-3 mt-8">
+            <button id="start-btn" onclick="startTimer()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3.5 rounded-xl shadow-lg shadow-indigo-200 transition active:scale-95">
+              <i data-lucide="play" class="w-5 h-5 fill-current"></i> 開始
+            </button>
+            <button id="pause-btn" onclick="pauseTimer()" class="hidden flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-8 py-3.5 rounded-xl shadow-lg shadow-amber-100 transition active:scale-95">
+              <i data-lucide="pause" class="w-5 h-5 fill-current"></i> 一時停止
+            </button>
+            <button id="reset-btn" onclick="resetTimer()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-5 py-3.5 rounded-xl transition">
+              <i data-lucide="rotate-ccw" class="w-5 h-5"></i> リセット
+            </button>
+            <button id="save-btn" onclick="saveTimerSession()" disabled class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg shadow-emerald-100 transition active:scale-95 opacity-50 cursor-not-allowed">
+              <i data-lucide="check" class="w-5 h-5"></i> 保存
+            </button>
+          </div>
+        </div>
+
+        <!-- Manual Entry Box -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 flex flex-col justify-between">
+          <div>
+            <h3 class="font-bold text-lg text-slate-800 mb-1 flex items-center gap-2">
+              <i data-lucide="pen-tool" class="w-5 h-5 text-indigo-500"></i> 手動で記録を追加
+            </h3>
+            <p class="text-xs text-slate-500 mb-4">タイマーを使わずに学習時間を入力できます</p>
+
+            <form id="manual-form" onsubmit="handleManualSubmit(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">科目</label>
+                <select id="manual-subject" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required></select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">日付</label>
+                <input type="date" id="manual-date" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">時間 (時)</label>
+                  <input type="number" id="manual-hours" min="0" max="24" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">時間 (分)</label>
+                  <input type="number" id="manual-minutes" min="0" max="59" value="30" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">メモ (任意)</label>
+                <input type="text" id="manual-note" placeholder="例: P.45 - P.60 / 復習" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition text-sm flex items-center justify-center gap-2">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> 記録を保存
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: PROBLEM STOPWATCH -->
+    <section id="tab-problem" class="space-y-6 hidden">
+      <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900">問題演習ストップウォッチ</h2>
+          <p class="text-slate-500 text-sm">問題ごとのタイム計測と科目別履歴の管理</p>
+        </div>
+        <div class="bg-slate-200/80 p-1 rounded-xl flex text-xs font-medium">
+          <button id="prob-subtab-timer-btn" onclick="setProblemSubTab('timer')" class="px-4 py-2 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold">
+            <i data-lucide="timer" class="w-4 h-4 inline mr-1"></i>タイマー計測
+          </button>
+          <button id="prob-subtab-history-btn" onclick="setProblemSubTab('history')" class="px-4 py-2 rounded-lg transition text-slate-600">
+            <i data-lucide="history" class="w-4 h-4 inline mr-1"></i>演習履歴・検索
+          </button>
+        </div>
+      </header>
+
+      <div id="prob-subtab-timer-content" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 md:p-8 max-w-2xl mx-auto flex flex-col items-center justify-center space-y-6">
+        <div class="w-full space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">科目</label>
+              <select id="prob-subject-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required></select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">問題名 / 大問名</label>
+              <input type="text" id="problem-name-input" placeholder="例: 数学 確率の大問3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div id="problem-compare-banner" class="hidden bg-indigo-50 border border-indigo-100 text-indigo-900 p-3 rounded-xl text-xs">
+            <div class="font-bold mb-0.5">📊 前回との比較</div>
+            <div id="problem-compare-text">-</div>
+          </div>
+
+          <div class="text-center font-mono font-black text-6xl md:text-7xl text-slate-800 py-8 bg-slate-50 rounded-2xl border border-slate-100 select-none" id="problem-display">
+            00:00:00
+          </div>
+
+          <div class="flex items-center justify-center gap-4 pt-2">
+            <button id="prob-start-btn" onclick="startProblemTimer()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3.5 rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-indigo-200 active:scale-95">
+              <i data-lucide="play" class="w-5 h-5 fill-current"></i> スタート
+            </button>
+            <button id="prob-pause-btn" onclick="pauseProblemTimer()" class="hidden bg-amber-500 hover:bg-amber-600 text-white font-semibold px-8 py-3.5 rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-amber-100 active:scale-95">
+              <i data-lucide="pause" class="w-5 h-5 fill-current"></i> 一時停止
+            </button>
+            <button onclick="saveProblemRecord()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3.5 rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-emerald-100 active:scale-95">
+              <i data-lucide="save" class="w-5 h-5"></i> 保存
+            </button>
+            <button onclick="resetProblemTimer()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-3.5 rounded-xl text-sm transition">
+              <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="prob-subtab-history-content" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 hidden space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+            <i data-lucide="search" class="w-5 h-5 text-indigo-500"></i> 科目別絞り込み & 問題名検索
+          </h3>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="prob-filter-subject" onchange="renderProblemHistory()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none">
+              <option value="all">すべての科目</option>
+            </select>
+            <input type="text" id="prob-search-input" oninput="renderProblemHistory()" placeholder="問題名で検索..." class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs text-slate-400 uppercase font-semibold border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">日付</th>
+                <th class="py-3 px-4">科目</th>
+                <th class="py-3 px-4">問題名</th>
+                <th class="py-3 px-4">タイム</th>
+                <th class="py-3 px-4 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="problem-history-tbody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+        <div id="problem-history-empty" class="p-8 text-center text-slate-400 text-sm hidden">
+          条件に一致する演習履歴はありません。
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: TODO LIST & SCHEDULE -->
+    <section id="tab-todos" class="space-y-6 hidden">
+      <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900">ToDoリスト & スケジュール</h2>
+          <p class="text-slate-500 text-sm">タスクの期間設定、カレンダー確認、円グラフによる24時間スケジュール</p>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="bg-slate-200/80 p-1 rounded-xl flex text-xs font-medium">
+            <button id="todo-view-list-btn" onclick="setTodoViewMode('list')" class="px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold">
+              <i data-lucide="list" class="w-4 h-4 inline mr-1"></i>タスク一覧
+            </button>
+            <button id="todo-view-schedule-btn" onclick="setTodoViewMode('schedule')" class="px-3 py-1.5 rounded-lg transition text-slate-600">
+              <i data-lucide="pie-chart" class="w-4 h-4 inline mr-1"></i>円グラフスケジュール
+            </button>
+            <button id="todo-view-calendar-btn" onclick="setTodoViewMode('calendar')" class="px-3 py-1.5 rounded-lg transition text-slate-600">
+              <i data-lucide="calendar" class="w-4 h-4 inline mr-1"></i>カレンダー
+            </button>
+          </div>
+
+          <div class="bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-sm flex items-center gap-3">
+            <i data-lucide="check-circle2" class="w-5 h-5 text-indigo-600"></i>
+            <div>
+              <div class="text-[10px] text-slate-500 font-medium">本日の達成タスク</div>
+              <div class="text-xs font-bold text-slate-800" id="todo-progress-text">0 / 0 完了 (0%)</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: Dynamic Form Container based on active view -->
+        <div class="space-y-6" id="todo-sidebar-forms">
+          <!-- Form for List Tab -->
+          <div id="form-box-list" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+            <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+              <i data-lucide="plus" class="w-5 h-5 text-indigo-500"></i> 学習ToDo追加
+            </h3>
+            <form onsubmit="handleAddTodo(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">タスク名</label>
+                <input type="text" id="todo-title-input" placeholder="例: 英語問題集 P.20〜P.25" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">科目</label>
+                <select id="todo-subject-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required></select>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">開始日</label>
+                  <input type="date" id="todo-startdate-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">終了日（期限）</label>
+                  <input type="date" id="todo-duedate-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">予想時間 (分 / 任意)</label>
+                <input type="number" id="todo-time-input" min="5" max="600" step="5" placeholder="例: 30" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+
+              <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-sm">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> タスクを追加
+              </button>
+            </form>
+          </div>
+
+          <!-- Form for Schedule Tab (スケジュール用タスク管理) -->
+          <div id="form-box-schedule" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 hidden">
+            <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+              <i data-lucide="list-checks" class="w-5 h-5 text-indigo-500"></i> スケジュール用タスク
+            </h3>
+            <p class="text-xs text-slate-500 mb-4">ここで登録したタスクは、円グラフのスケジュール追加時に選択して利用できます。</p>
+            <form onsubmit="handleScheduleTaskAdd(event)" class="space-y-3">
+              <input type="hidden" id="sched-edit-task-id">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">タスク名 / メモ</label>
+                <input type="text" id="sched-task-name" placeholder="例: 部活 / 自習 / 休憩" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none" required>
+              </div>
+              <div class="flex items-center gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">カラー</label>
+                  <input type="color" id="sched-task-color" value="#3b82f6" class="w-12 h-9 rounded-lg cursor-pointer border border-slate-200 p-1">
+                </div>
+                <div class="flex-1">
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">&nbsp;</label>
+                  <div class="flex gap-2">
+                    <button type="submit" id="sched-task-submit-btn" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-xl text-xs transition">
+                      追加
+                    </button>
+                    <button type="button" id="sched-task-cancel-btn" onclick="cancelScheduleTaskEdit()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-3 py-2.5 rounded-xl text-xs transition">
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+            <div id="schedule-custom-tasks-list" class="mt-4 space-y-1.5 max-h-48 overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 space-y-4">
+          <!-- VIEW 1: LIST VIEW -->
+          <div id="todo-list-view" class="space-y-4">
+            <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200/85">
+              <div class="flex gap-1 text-xs font-medium bg-slate-100 p-1 rounded-lg">
+                <button onclick="setTodoFilter('all')" id="filter-all-btn" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-indigo-600 font-semibold transition">すべて</button>
+                <button onclick="setTodoFilter('pending')" id="filter-pending-btn" class="px-3 py-1.5 rounded-md text-slate-600 transition">未完了</button>
+                <button onclick="setTodoFilter('completed')" id="filter-completed-btn" class="px-3 py-1.5 rounded-md text-slate-600 transition">完了</button>
+              </div>
+
+              <button onclick="clearCompletedTodos()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold transition px-3 py-1.5 rounded-lg border border-rose-200 flex items-center gap-1">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 完了タスクを一括削除
+              </button>
+            </div>
+
+            <div id="todo-container" class="space-y-3"></div>
+
+            <div id="todo-empty" class="bg-white rounded-2xl p-8 text-center border border-slate-200/80 text-slate-400 text-sm hidden">
+              タスクが登録されていません。左のフォームから追加しましょう！
+            </div>
+          </div>
+
+          <!-- VIEW 2: PIE CHART SCHEDULE VIEW (今日・明日の円グラフスケジュール) -->
+          <div id="todo-schedule-view" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hidden space-y-6">
+            <div class="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                  <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-500"></i> 円グラフによる24時間スケジュール
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">予定の追加・編集が行えます</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Today Pie Box -->
+              <div class="bg-indigo-50/30 border border-indigo-100 rounded-2xl p-4 flex flex-col items-center space-y-4">
+                <div class="w-full flex items-center justify-between border-b border-indigo-100 pb-2">
+                  <span class="font-bold text-indigo-900 text-sm flex items-center gap-1.5">
+                    <i data-lucide="sun" class="w-4 h-4 text-amber-500"></i> 今日 (<span id="schedule-today-date-label"></span>)
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <button onclick="copyScheduleToTomorrow()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-2.5 py-1.5 rounded-lg transition flex items-center gap-1" title="今日のスケジュールを明日にコピー">
+                      <i data-lucide="copy" class="w-3.5 h-3.5"></i> 明日にコピー
+                    </button>
+                    <button onclick="openScheduleModal('today')" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1.5 rounded-lg transition shadow-xs flex items-center gap-1">
+                      <i data-lucide="plus" class="w-3.5 h-3.5"></i> 予定を追加
+                    </button>
+                  </div>
+                </div>
+                <div class="w-64 h-64 relative">
+                  <canvas id="todayPieChart"></canvas>
+                </div>
+                <div id="schedule-today-list-text" class="w-full space-y-1.5 max-h-40 overflow-y-auto pr-1"></div>
+              </div>
+
+              <!-- Tomorrow Pie Box -->
+              <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col items-center space-y-4">
+                <div class="w-full flex items-center justify-between border-b border-slate-200 pb-2">
+                  <span class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                    <i data-lucide="sunrise" class="w-4 h-4 text-indigo-500"></i> 明日 (<span id="schedule-tomorrow-date-label"></span>)
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <button onclick="openScheduleModal('tomorrow')" class="text-xs bg-slate-900 hover:bg-slate-800 text-white font-medium px-3 py-1.5 rounded-lg transition shadow-xs flex items-center gap-1">
+                      <i data-lucide="plus" class="w-3.5 h-3.5"></i> 予定を追加
+                    </button>
+                  </div>
+                </div>
+                <div class="w-64 h-64 relative">
+                  <canvas id="tomorrowPieChart"></canvas>
+                </div>
+                <div id="schedule-tomorrow-list-text" class="w-full space-y-1.5 max-h-40 overflow-y-auto pr-1"></div>
+              </div>
+            </div>
+
+            <!-- Schedule Templates / Saved Presets -->
+            <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <i data-lucide="bookmark" class="w-4 h-4 text-indigo-500"></i> 保存したスケジュールテンプレート
+              </div>
+              <div class="flex items-center gap-2 w-full sm:w-auto">
+                <input type="text" id="sched-preset-name" placeholder="テンプレート名 (例: 平日ルーティン)" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none flex-1 sm:w-56">
+                <button onclick="saveCurrentScheduleAsPreset()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-2 rounded-xl text-xs transition whitespace-nowrap">
+                  今日の予定を保存
+                </button>
+              </div>
+            </div>
+            <div id="schedule-presets-list" class="flex flex-wrap gap-2 pt-2"></div>
+          </div>
+
+          <!-- VIEW 3: CALENDAR VIEW -->
+          <div id="todo-calendar-view" class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hidden space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 id="calendar-month-year" class="font-bold text-lg text-slate-800">2026年 8月</h3>
+                <p class="text-[11px] text-slate-400">日付をタップするとその日のタスク管理ができます</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="changeCalendarMonth(-1)" class="p-2 hover:bg-slate-100 rounded-lg transition"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                <button onclick="resetCalendarToToday()" class="text-xs font-semibold text-indigo-600 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">今月</button>
+                <button onclick="changeCalendarMonth(1)" class="p-2 hover:bg-slate-100 rounded-lg transition"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+              </div>
+            </div>
+
+            <div class="calendar-grid text-center text-xs font-semibold text-slate-400 border-b border-slate-100 pb-2">
+              <div class="text-rose-500">日</div>
+              <div>月</div>
+              <div>火</div>
+              <div>水</div>
+              <div>木</div>
+              <div>金</div>
+              <div class="text-indigo-500">土</div>
+            </div>
+
+            <div id="calendar-days-container" class="calendar-grid gap-1 min-h-[320px]"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: DASHBOARD -->
+    <section id="tab-dashboard" class="space-y-6 hidden">
+      <header>
+        <h2 class="text-2xl font-bold text-slate-900">ダッシュボード</h2>
+        <p class="text-slate-500 text-sm">あなたの学習データの分析と進捗</p>
+      </header>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
+          <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+            <i data-lucide="clock" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">本日の勉強時間</div>
+            <div class="text-2xl font-bold text-slate-800" id="kpi-today">0h 0m</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
+          <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+            <i data-lucide="calendar" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">今週の累計</div>
+            <div class="text-2xl font-bold text-slate-800" id="kpi-week">0h 0m</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
+          <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+            <i data-lucide="award" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">総学習時間</div>
+            <div class="text-2xl font-bold text-slate-800" id="kpi-total">0h 0m</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
+          <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
+            <i data-lucide="flame" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">連続学習日数</div>
+            <div class="text-2xl font-bold text-slate-800" id="kpi-streak">0日</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-5 h-5 text-indigo-500"></i> 科目別積み上げ学習時間
+            </h3>
+            <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-medium self-start sm:self-auto">
+              <button id="chart-range-7days" onclick="setChartRange('7days')" class="px-3 py-1 rounded-md bg-white shadow-sm text-indigo-600 font-semibold transition">直近7日間</button>
+              <button id="chart-range-month" onclick="setChartRange('month')" class="px-3 py-1 rounded-md text-slate-600 transition">今月</button>
+              <button id="chart-range-all" onclick="setChartRange('all')" class="px-3 py-1 rounded-md text-slate-600 transition">全期間 (月別)</button>
+            </div>
+          </div>
+          <div class="h-64 relative">
+            <canvas id="weeklyChart"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-500"></i> 科目別比率
+            </h3>
+            <div class="h-56 relative flex items-center justify-center">
+              <canvas id="subjectChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: HISTORY -->
+    <section id="tab-history" class="space-y-6 hidden">
+      <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900">学習履歴</h2>
+          <p class="text-slate-500 text-sm">これまでの全記録ログと期間別集計</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="history-filter-subject" onchange="renderHistoryTable()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none shadow-sm">
+            <option value="all">すべての科目</option>
+          </select>
+          <input type="text" id="history-search-input" oninput="renderHistoryTable()" placeholder="メモで検索..." class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm">
+          <div class="bg-slate-200/80 p-1 rounded-xl flex text-xs font-medium">
+            <button id="hist-filter-all" onclick="setHistoryFilter('all')" class="px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold">全期間</button>
+            <button id="hist-filter-today" onclick="setHistoryFilter('today')" class="px-3 py-1.5 rounded-lg transition text-slate-600">今日</button>
+            <button id="hist-filter-week" onclick="setHistoryFilter('week')" class="px-3 py-1.5 rounded-lg transition text-slate-600">今週</button>
+            <button id="hist-filter-month" onclick="setHistoryFilter('month')" class="px-3 py-1.5 rounded-lg transition text-slate-600">今月</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
+          <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+            <i data-lucide="clock" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500" id="history-period-label">選択期間の勉強時間</div>
+            <div class="text-2xl font-bold text-slate-800" id="history-period-time">0h 0m</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
+          <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+            <i data-lucide="check-circle" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">記録セッション数</div>
+            <div class="text-2xl font-bold text-slate-800" id="history-period-count">0回</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs text-slate-400 uppercase font-semibold border-b border-slate-200">
+              <tr>
+                <th class="py-3.5 px-6">日付</th>
+                <th class="py-3.5 px-6">科目</th>
+                <th class="py-3.5 px-6">学習時間</th>
+                <th class="py-3.5 px-6">メモ</th>
+                <th class="py-3.5 px-6 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <div id="history-empty" class="p-8 text-center text-slate-400 text-sm hidden">
+          指定された条件の学習記録はありません。
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: SUBJECTS & GOALS -->
+    <section id="tab-subjects" class="space-y-6 hidden">
+      <header>
+        <h2 class="text-2xl font-bold text-slate-900">科目・目標設定</h2>
+        <p class="text-slate-500 text-sm">管理する科目と1日の目標時間を設定します</p>
+      </header>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+          <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <i data-lucide="target" class="w-5 h-5 text-indigo-500"></i> 1日の目標学習時間
+          </h3>
+          <p class="text-xs text-slate-500 mb-6">ダッシュボードやサイドバーの進捗バーに反映されます</p>
+
+          <form onsubmit="handleGoalSubmit(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">目標時間 (時間)</label>
+              <input type="number" id="goal-input" step="0.5" min="0.5" max="24" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+            </div>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2.5 rounded-xl text-sm transition">
+              目標を保存
+            </button>
+          </form>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+          <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <i data-lucide="folder-plus" class="w-5 h-5 text-indigo-500"></i> 科目の追加
+          </h3>
+          <p class="text-xs text-slate-500 mb-6">新しい学習カテゴリを作成します</p>
+
+          <form onsubmit="handleAddSubject(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">科目名</label>
+              <input type="text" id="subject-name-input" placeholder="例: 英語、プログラミング" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">テーマカラー</label>
+              <div class="flex items-center gap-3">
+                <input type="color" id="subject-color-input" value="#6366f1" class="w-12 h-10 rounded-lg cursor-pointer border border-slate-200 p-1">
+                <span class="text-xs text-slate-400">グラフ等の色</span>
+              </div>
+            </div>
+            <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-6 py-2.5 rounded-xl text-sm transition">
+              科目をつくる
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+        <h3 class="text-lg font-bold text-slate-800 mb-4">登録済み科目一覧</h3>
+        <div id="subject-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+      </div>
+
+      <!-- Cloud Background Auto-Sync Section -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-4">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="cloud-sync" class="w-5 h-5 text-indigo-500"></i> 自動バックグラウンド同期
+        </h3>
+        <p class="text-xs text-slate-500">普段のデータは高速なブラウザ内ストレージで完結し、裏で自動的にFirestoreとリアルタイム同期します。別の端末と共有する場合は同じ「同期ルームID」を入力してください。</p>
+        
+        <div class="flex flex-col sm:flex-row items-center gap-3">
+          <input type="text" id="sync-room-input" placeholder="例: study-room-1234" onchange="updateSyncRoom(this.value)" class="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <div class="text-xs text-emerald-600 font-semibold flex items-center gap-1.5" id="sync-status-indicator">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="sync-status-text">ローカル保存稼働中</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backup & Restore Section -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+        <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+          <i data-lucide="database" class="w-5 h-5 text-indigo-500"></i> セーブデータのバックアップ・復元
+        </h3>
+        <p class="text-xs text-slate-500 mb-4">ファイル（JSON形式）としてデータを書き出したり読み込んだりすることもできます。</p>
+        <div class="flex flex-wrap items-center gap-3">
+          <button onclick="exportBackupData()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2 shadow-sm">
+            <i data-lucide="download" class="w-4 h-4"></i> データを書き出す (バックアップ)
+          </button>
+          <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2 cursor-pointer shadow-sm">
+            <i data-lucide="upload" class="w-4 h-4"></i> データを読み込む (復元)
+            <input type="file" id="import-file-input" accept=".json" onchange="importBackupData(event)" class="hidden">
+          </label>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 text-slate-400 flex items-center justify-around py-2 z-30 shadow-lg">
+    <button onclick="switchTab('timer')" id="mob-nav-timer" class="flex flex-col items-center gap-1 text-[10px] font-medium text-indigo-400">
+      <i data-lucide="timer" class="w-5 h-5"></i>
+      <span>タイマー</span>
+    </button>
+    <button onclick="switchTab('problem')" id="mob-nav-problem" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
+      <i data-lucide="timer" class="w-5 h-5"></i>
+      <span>演習</span>
+    </button>
+    <button onclick="switchTab('todos')" id="mob-nav-todos" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
+      <i data-lucide="check-square" class="w-5 h-5"></i>
+      <span>ToDo</span>
+    </button>
+    <button onclick="switchTab('dashboard')" id="mob-nav-dashboard" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
+      <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+      <span>分析</span>
+    </button>
+    <button onclick="switchTab('history')" id="mob-nav-history" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
+      <i data-lucide="history" class="w-5 h-5"></i>
+      <span>履歴</span>
+    </button>
+    <button onclick="switchTab('subjects')" id="mob-nav-subjects" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
+      <i data-lucide="folder-kanban" class="w-5 h-5"></i>
+      <span>設定</span>
+    </button>
+  </nav>
+
+  <!-- Schedule Add/Edit Modal -->
+  <div id="schedule-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="clock" class="w-5 h-5 text-indigo-500"></i> <span id="schedule-modal-title">予定の追加</span>
+        </h3>
+        <button onclick="closeScheduleModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form onsubmit="handleScheduleModalSubmit(event)" class="space-y-4">
+        <input type="hidden" id="schedule-modal-day-type">
+        <input type="hidden" id="schedule-modal-edit-id">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">開始時間</label>
+            <select id="schedule-modal-start" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">終了時間</label>
+            <select id="schedule-modal-end" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">スケジュール用タスクから選ぶ (任意)</label>
+          <select id="schedule-modal-custom-task-select" onchange="fillScheduleFromCustomTask(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none mb-2">
+            <option value="">-- スケジュール用タスクから選択 --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">予定内容（メモなど）</label>
+          <input type="text" id="schedule-modal-content" placeholder="例: 数学の問題集 P.10〜P.15" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeScheduleModal()" class="px-4 py-2 rounded-xl text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 transition">キャンセル</button>
+          <button type="submit" id="schedule-modal-submit-btn" class="px-5 py-2 rounded-xl text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition shadow-sm">予定を追加する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Day Detail Modal -->
+  <div id="day-detail-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="calendar" class="w-5 h-5 text-indigo-500"></i> <span id="modal-date-title">2026-08-07</span> のタスク
+        </h3>
+        <button onclick="closeDayDetailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form onsubmit="handleModalAddTodo(event)" class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
+        <input type="hidden" id="modal-target-date">
+        <div class="text-xs font-bold text-slate-700">この日のタスクを追加</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input type="text" id="modal-todo-title" placeholder="タスク名を入力..." class="bg-white border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+          <select id="modal-todo-subject" class="bg-white border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" required></select>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <input type="number" id="modal-todo-time" min="5" max="600" step="5" placeholder="予想分" class="w-24 bg-white border border-slate-200 rounded-lg p-2 text-xs focus:outline-none">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg text-xs transition">追加する</button>
+        </div>
+      </form>
+
+      <div id="modal-todo-list" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- Edit Todo Modal -->
+  <div id="edit-todo-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+        <i data-lucide="edit-3" class="w-5 h-5 text-indigo-500"></i> タスクの編集
+      </h3>
+      <form onsubmit="handleEditTodoSubmit(event)" class="space-y-3">
+        <input type="hidden" id="edit-todo-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">タスク名</label>
+          <input type="text" id="edit-todo-title" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">科目</label>
+          <select id="edit-todo-subject" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required></select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">開始日</label>
+            <input type="date" id="edit-todo-startdate" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">終了日（期限）</label>
+            <input type="date" id="edit-todo-duedate" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">予想時間 (分)</label>
+          <input type="number" id="edit-todo-time" min="5" max="600" step="5" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeEditTodoModal()" class="px-4 py-2 rounded-xl text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 transition">キャンセル</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition shadow-sm">変更を保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Subject Modal -->
+  <div id="edit-subject-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+      <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+        <i data-lucide="folder-pen" class="w-5 h-5 text-indigo-500"></i> 科目の編集
+      </h3>
+      <form onsubmit="handleEditSubjectSubmit(event)" class="space-y-3">
+        <input type="hidden" id="edit-subject-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">科目名</label>
+          <input type="text" id="edit-subject-name" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">テーマカラー</label>
+          <div class="flex items-center gap-3">
+            <input type="color" id="edit-subject-color" class="w-12 h-10 rounded-lg cursor-pointer border border-slate-200 p-1">
+            <span class="text-xs text-slate-400">グラフ等の色</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeEditSubjectModal()" class="px-4 py-2 rounded-xl text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 transition">キャンセル</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition shadow-sm">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Template Choice Modal -->
+  <div id="preset-load-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+      <h3 class="text-lg font-bold text-slate-800">テンプレートの読み込み</h3>
+      <p class="text-xs text-slate-500">「<span id="preset-load-name-label"></span>」をどちらに反映させますか？</p>
+      <input type="hidden" id="preset-load-target-name">
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button onclick="confirmLoadPreset('today')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl text-xs transition">
+          今日に読み込む
+        </button>
+        <button onclick="confirmLoadPreset('tomorrow')" class="bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl text-xs transition">
+          明日に読み込む
+        </button>
+      </div>
+      <button onclick="closePresetLoadModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-2.5 rounded-xl text-xs transition mt-1">
+        キャンセル
+      </button>
+    </div>
+  </div>
+
+  <!-- Mini Floating Timer Widget -->
+  <div id="floating-timer" class="hidden fixed bottom-16 md:bottom-4 right-4 bg-slate-900/95 backdrop-blur text-white px-4 py-3 rounded-2xl shadow-2xl border border-slate-700/80 z-50 flex items-center gap-4 transition-all duration-300">
+    <div class="flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" id="floating-dot"></span>
+      <div>
+        <div class="text-[10px] text-slate-400 font-medium" id="floating-label">計測中</div>
+        <div class="text-lg font-mono font-bold tracking-tight text-indigo-300" id="floating-display">00:00:00</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-1.5 border-l border-slate-700 pl-3">
+      <button onclick="switchTab('timer')" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1">
+        <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i> 画面へ
+      </button>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-20 md:bottom-5 right-5 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 z-50 pointer-events-none">
+    <i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
+    <span id="toast-message" class="text-sm font-medium">通知メッセージ</span>
+  </div>
+
+  <audio id="alarm-sound" src="timer-sound.mp3" preload="auto"></audio>
+
+  <!-- Script and Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const netlifyFirebaseConfig = {
+      apiKey: "AIzaSyAY6j40lEWfskNXqCpDWKMiOuVsF1rAAH4",
+      authDomain: "study-tracker-pro-dashboard.firebaseapp.com",
+      projectId: "study-tracker-pro-dashboard",
+      storageBucket: "study-tracker-pro-dashboard.firebasestorage.app",
+      messagingSenderId: "12330692555",
+      appId: "1:12330692555:web:1baf87adf42ca3381d904e",
+      measurementId: "G-CQWW6MB1KK"
+    };
+
+    let db = null;
+    let auth = null;
+    let autoSyncTimer = null;
+    let isSyncing = false;
+    let unsubscribeSnapshot = null;
+
+    async function initFirebase() {
+      if (db) return db;
+      try {
+        const app = initializeApp(netlifyFirebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        await signInAnonymously(auth);
+        return db;
+      } catch (e) {
+        console.error("Firebase init error:", e);
+        return null;
+      }
+    }
+
+    window.updateSyncRoom = function(roomId) {
+      roomId = roomId.trim();
+      localStorage.setItem('st_sync_room', roomId);
+      if (roomId) {
+        setupRealtimeSync(roomId);
+      } else {
+        if (unsubscribeSnapshot) {
+          unsubscribeSnapshot();
+          unsubscribeSnapshot = null;
+        }
+        updateSyncStatus('ローカル保存稼働中', 'text-emerald-600');
+      }
+    };
+
+    async function setupRealtimeSync(roomId) {
+      const database = await initFirebase();
+      if (!database) {
+        updateSyncStatus('❌ クラウド接続エラー', 'text-rose-500');
+        return;
+      }
+
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+
+      updateSyncStatus('☁️ リアルタイム同期中...', 'text-indigo-500');
+
+      const docRef = doc(database, 'rooms', roomId);
+
+      // 初回取得
+      try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const remoteData = docSnap.data();
+          const remoteUpdatedAt = remoteData.updatedAt || 0;
+          const localUpdatedAt = parseInt(localStorage.getItem('st_updated_at') || '0');
+
+          if (remoteUpdatedAt > localUpdatedAt) {
+            applyRemoteData(remoteData, remoteUpdatedAt);
+          } else if (localUpdatedAt > remoteUpdatedAt) {
+            pushLocalDataToRemote(docRef);
+          }
+        } else {
+          // ルームが存在しない場合は現在のローカルデータをプッシュして作成
+          pushLocalDataToRemote(docRef);
+        }
+      } catch (e) {
+        console.error("Initial sync error:", e);
+      }
+
+      // リアルタイムリスナー設定（他端末での変更を即時反映）
+      unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+        if (!docSnap.exists() || isSyncing) return;
+        const remoteData = docSnap.data();
+        const remoteUpdatedAt = remoteData.updatedAt || 0;
+        const localUpdatedAt = parseInt(localStorage.getItem('st_updated_at') || '0');
+
+        if (remoteUpdatedAt > localUpdatedAt) {
+          isSyncing = true;
+          applyRemoteData(remoteData, remoteUpdatedAt);
+          isSyncing = false;
+        }
+      }, (error) => {
+        console.error("Snapshot error:", error);
+        updateSyncStatus('⚠️ 同期エラー (ローカル保存中)', 'text-amber-500');
+      });
+
+      updateSyncStatus('✅ 自動同期中 (リアルタイム)', 'text-emerald-600');
+    }
+
+    function applyRemoteData(remoteData, remoteUpdatedAt) {
+      // タイマー稼働中であれば現在の選択科目を保持する
+      const timerSubSelect = document.getElementById('timer-subject-select');
+      const currentSelectedSubject = timerSubSelect ? timerSubSelect.value : null;
+
+      if (remoteData.subjects) window.subjects = remoteData.subjects;
+      if (remoteData.logs) window.logs = remoteData.logs;
+      if (remoteData.todos) window.todos = remoteData.todos;
+      if (remoteData.problemLogs) window.problemLogs = remoteData.problemLogs;
+      if (remoteData.dailyGoal) window.dailyGoal = remoteData.dailyGoal;
+      if (remoteData.timeSchedules) window.timeSchedules = remoteData.timeSchedules;
+      if (remoteData.customScheduleTasks) window.customScheduleTasks = remoteData.customScheduleTasks;
+      if (remoteData.schedulePresets) window.schedulePresets = remoteData.schedulePresets;
+
+      localStorage.setItem('st_subjects', JSON.stringify(window.subjects));
+      localStorage.setItem('st_logs', JSON.stringify(window.logs));
+      localStorage.setItem('st_todos', JSON.stringify(window.todos));
+      localStorage.setItem('st_problem_logs', JSON.stringify(window.problemLogs));
+      localStorage.setItem('st_goal', window.dailyGoal);
+      localStorage.setItem('st_time_schedules', JSON.stringify(window.timeSchedules));
+      localStorage.setItem('st_custom_sched_tasks', JSON.stringify(window.customScheduleTasks));
+      localStorage.setItem('st_sched_presets', JSON.stringify(window.schedulePresets));
+      localStorage.setItem('st_updated_at', String(remoteUpdatedAt));
+
+      if (typeof renderSubjectOptions === 'function') renderSubjectOptions();
+      if (typeof renderSubjectList === 'function') renderSubjectList();
+      if (typeof updateDashboardData === 'function') updateDashboardData();
+      if (typeof refreshActiveTodoView === 'function') refreshActiveTodoView();
+      if (typeof renderProblemHistory === 'function') renderProblemHistory();
+      if (typeof renderHistoryTable === 'function') renderHistoryTable();
+      if (typeof renderCustomScheduleTasksList === 'function') renderCustomScheduleTasksList();
+      if (typeof renderSchedulePresetsList === 'function') renderSchedulePresetsList();
+
+      // 保持していた選択科目を復元
+      if (currentSelectedSubject && timerSubSelect) {
+        timerSubSelect.value = currentSelectedSubject;
+      }
+    }
+
+    async function pushLocalDataToRemote(docRef) {
+      const database = await initFirebase();
+      if (!database) return;
+      const now = Date.now();
+      localStorage.setItem('st_updated_at', String(now));
+      
+      isSyncing = true;
+      try {
+        await setDoc(docRef, {
+          subjects: window.subjects,
+          logs: window.logs,
+          todos: window.todos,
+          problemLogs: window.problemLogs,
+          dailyGoal: window.dailyGoal,
+          timeSchedules: window.timeSchedules,
+          customScheduleTasks: window.customScheduleTasks,
+          schedulePresets: window.schedulePresets,
+          updatedAt: now
+        });
+      } catch (e) {
+        console.error("Push remote error:", e);
+      } finally {
+        isSyncing = false;
+      }
+    }
+
+    window.notifyDataChanged = function() {
+      const now = Date.now();
+      localStorage.setItem('st_updated_at', String(now));
+      
+      const roomId = localStorage.getItem('st_sync_room');
+      if (roomId && db) {
+        if (autoSyncTimer) clearTimeout(autoSyncTimer);
+        autoSyncTimer = setTimeout(async () => {
+          const database = await initFirebase();
+          if (database) {
+            const docRef = doc(database, 'rooms', roomId);
+            pushLocalDataToRemote(docRef);
+          }
+        }, 500); // 変更後0.5秒で即時クラウドへプッシュ
+      }
+    };
+
+    function updateSyncStatus(text, colorClass) {
+      const statusText = document.getElementById('sync-status-text');
+      const indicator = document.getElementById('sync-status-indicator');
+      if (statusText) statusText.innerText = text;
+      if (indicator) {
+        indicator.className = `text-xs font-semibold flex items-center gap-1.5 ${colorClass}`;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedRoom = localStorage.getItem('st_sync_room') || '';
+      const roomInput = document.getElementById('sync-room-input');
+      if (roomInput && savedRoom) {
+        roomInput.value = savedRoom;
+        setupRealtimeSync(savedRoom);
+      }
+    });
+
+    // 画面にフォーカスが戻った時にも再同期チェック
+    window.addEventListener('focus', () => {
+      const savedRoom = localStorage.getItem('st_sync_room') || '';
+      if (savedRoom) {
+        setupRealtimeSync(savedRoom);
+      }
+    });
+  </script>
+
+  <script>
+    const DEFAULT_SUBJECTS = [
+      { id: 'sub_1', name: '英語', color: '#6366f1' },
+      { id: 'sub_2', name: '数学', color: '#10b981' },
+      { id: 'sub_3', name: 'プログラミング', color: '#f59e0b' },
+      { id: 'sub_4', name: '読書', color: '#ec4899' }
+    ];
+
+    let activeTodoTask = null;
+    let todoViewMode = 'list';
+    let currentTodoFilter = 'all';
+    let historyPeriodFilter = 'all';
+    let calendarDate = new Date();
+    let currentChartRange = '7days';
+
+    let timerMode = 'stopwatch';
+    let timerSeconds = 0;
+    let targetTimerSeconds = 1800;
+    let alarmTargetTimestamp = null;
+    let timerInterval = null;
+    let isTimerRunning = false;
+    let hasTimerStartedEver = false;
+
+    let pomoWorkMin = 25;
+    let pomoBreakMin = 5;
+    let totalSets = 4;
+    let currentSet = 1;
+    let loopState = 'work';
+
+    let subjectElapsedSeconds = {};
+
+    let probSeconds = 0;
+    let probInterval = null;
+    let isProbRunning = false;
+
+    let alarmTimeout = null;
+    let weeklyChartInstance = null;
+    let subjectChartInstance = null;
+
+    let todayPieChartInstance = null;
+    let tomorrowPieChartInstance = null;
+
+    window.subjects = JSON.parse(localStorage.getItem('st_subjects')) || DEFAULT_SUBJECTS;
+    window.logs = JSON.parse(localStorage.getItem('st_logs')) || [];
+    window.todos = JSON.parse(localStorage.getItem('st_todos')) || [];
+    window.problemLogs = JSON.parse(localStorage.getItem('st_problem_logs')) || [];
+    window.dailyGoal = parseFloat(localStorage.getItem('st_goal')) || 4.0;
+    window.timeSchedules = JSON.parse(localStorage.getItem('st_time_schedules')) || [];
+    window.customScheduleTasks = JSON.parse(localStorage.getItem('st_custom_sched_tasks')) || [
+      { id: 'c_1', name: '自習・復習', color: '#3b82f6' },
+      { id: 'c_2', name: '休憩', color: '#10b981' },
+      { id: 'c_3', name: '部活・行事', color: '#f59e0b' }
+    ];
+    window.schedulePresets = JSON.parse(localStorage.getItem('st_sched_presets')) || {};
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      document.getElementById('manual-date').value = getTodayString();
+      document.getElementById('todo-startdate-input').value = getTodayString();
+      document.getElementById('todo-duedate-input').value = getTodayString();
+      document.getElementById('goal-input').value = window.dailyGoal;
+      
+      const now = new Date();
+      now.setHours(now.getHours() + 1);
+      const hoursStr = String(now.getHours()).padStart(2, '0');
+      const minsStr = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('target-time-input').value = `${hoursStr}:${minsStr}`;
+
+      renderSubjectOptions();
+      renderSubjectList();
+      updateDashboardData();
+      renderTodoList();
+      renderProblemHistory();
+      renderCustomScheduleTasksList();
+      renderSchedulePresetsList();
+      
+      if (window.subjects.length > 0) {
+        document.getElementById('timer-subject-select').value = window.subjects[0].id;
+        document.getElementById('prob-subject-select').value = window.subjects[0].id;
+      }
+      setTimerMode('stopwatch');
+
+      setInterval(updateLiveClock, 1000);
+      updateLiveClock();
+
+      const probInput = document.getElementById('problem-name-input');
+      if (probInput) {
+        probInput.addEventListener('input', checkProblemComparison);
+      }
+    });
+
+    function updateLiveClock() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      const weekDay = days[now.getDay()];
+
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+
+      const dateStrFull = `${year}年 ${month}月${day}日 (${weekDay})`;
+      const dateStrShort = `${month}/${day}(${weekDay})`;
+      const timeStr = `${hours}:${minutes}:${seconds}`;
+
+      const sDateEl = document.getElementById('sidebar-date-text');
+      const sClockEl = document.getElementById('sidebar-clock-text');
+      if (sDateEl) sDateEl.innerText = dateStrFull;
+      if (sClockEl) sClockEl.innerText = timeStr;
+
+      const mDateEl = document.getElementById('mobile-sidebar-date-text');
+      const mClockEl = document.getElementById('mobile-sidebar-clock-text');
+      if (mDateEl) mDateEl.innerText = dateStrShort;
+      if (mClockEl) mClockEl.innerText = timeStr;
+    }
+
+    function switchTab(tabId) {
+      ['timer', 'problem', 'todos', 'dashboard', 'history', 'subjects'].forEach(tab => {
+        const section = document.getElementById(`tab-${tab}`);
+        const btn = document.getElementById(`nav-${tab}`);
+        const mobBtn = document.getElementById(`mob-nav-${tab}`);
+        
+        if (tab === tabId) {
+          if (section) section.classList.remove('hidden');
+          if (btn) {
+            btn.classList.add('bg-indigo-600', 'text-white');
+            btn.classList.remove('text-slate-400', 'hover:bg-slate-800');
+          }
+          if (mobBtn) {
+            mobBtn.classList.add('text-indigo-400');
+            mobBtn.classList.remove('hover:text-slate-100');
+          }
+        } else {
+          if (section) section.classList.add('hidden');
+          if (btn) {
+            btn.classList.remove('bg-indigo-600', 'text-white');
+            btn.classList.add('text-slate-400', 'hover:bg-slate-800');
+          }
+          if (mobBtn) {
+            mobBtn.classList.remove('text-indigo-400');
+            mobBtn.classList.add('hover:text-slate-100');
+          }
+        }
+      });
+
+      if (tabId === 'dashboard') {
+        updateDashboardData();
+      } else if (tabId === 'history') {
+        renderHistoryTable();
+      } else if (tabId === 'problem') {
+        renderProblemHistory();
+      } else if (tabId === 'todos') {
+        if (todoViewMode === 'calendar') {
+          renderCalendarView();
+        } else if (todoViewMode === 'schedule') {
+          renderScheduleView();
+        } else {
+          renderTodoList();
+        }
+      }
+    }
+
+    function setProblemSubTab(subTab) {
+      const timerBtn = document.getElementById('prob-subtab-timer-btn');
+      const historyBtn = document.getElementById('prob-subtab-history-btn');
+      const timerContent = document.getElementById('prob-subtab-timer-content');
+      const historyContent = document.getElementById('prob-subtab-history-content');
+
+      if (subTab === 'timer') {
+        timerBtn.className = "px-4 py-2 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
+        historyBtn.className = "px-4 py-2 rounded-lg transition text-slate-600";
+        timerContent.classList.remove('hidden');
+        historyContent.classList.add('hidden');
+      } else {
+        historyBtn.className = "px-4 py-2 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
+        timerBtn.className = "px-4 py-2 rounded-lg transition text-slate-600";
+        historyContent.classList.remove('hidden');
+        timerContent.classList.add('hidden');
+        renderProblemHistory();
+      }
+    }
+
+    function setTimerMode(mode) {
+      if (isTimerRunning) {
+        showToast('タイマー停止後にモードを変更できます');
+        return;
+      }
+      timerMode = mode;
+      const stopwatchBtn = document.getElementById('mode-stopwatch-btn');
+      const timerBtn = document.getElementById('mode-timer-btn');
+      const alarmBtn = document.getElementById('mode-alarm-btn');
+      const pomodoroBtn = document.getElementById('mode-pomodoro-btn');
+      const normalPanel = document.getElementById('normal-timer-panel');
+      const alarmPanel = document.getElementById('alarm-timer-panel');
+      const pomoSettings = document.getElementById('pomodoro-settings-panel');
+      const loopStatus = document.getElementById('timer-loop-status');
+
+      normalPanel.classList.add('hidden');
+      alarmPanel.classList.add('hidden');
+      pomoSettings.classList.add('hidden');
+      loopStatus.classList.add('hidden');
+
+      stopwatchBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+      timerBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+      alarmBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+      pomodoroBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+
+      if (mode === 'stopwatch') {
+        stopwatchBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
+        timerSeconds = 0;
+      } else if (mode === 'timer') {
+        timerBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
+        normalPanel.classList.remove('hidden');
+        const mins = parseInt(document.getElementById('normal-minutes-input').value) || 30;
+        targetTimerSeconds = mins * 60;
+        timerSeconds = targetTimerSeconds;
+      } else if (mode === 'alarm') {
+        alarmBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
+        alarmPanel.classList.remove('hidden');
+        updateAlarmTimerTarget();
+      } else if (mode === 'pomodoro') {
+        pomodoroBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
+        pomoSettings.classList.remove('hidden');
+        
+        pomoWorkMin = parseInt(document.getElementById('pomo-work-input').value) || 25;
+        pomoBreakMin = parseInt(document.getElementById('pomo-break-input').value) || 5;
+        totalSets = parseInt(document.getElementById('pomo-sets-input').value) || 4;
+        currentSet = 1;
+        loopState = 'work';
+        timerSeconds = pomoWorkMin * 60;
+        subjectElapsedSeconds = {};
+
+        loopStatus.classList.remove('hidden');
+        loopStatus.innerText = `🔥 集中タイム (${currentSet} / ${totalSets}セット)`;
+      }
+
+      hasTimerStartedEver = false;
+      updateSaveButtonState();
+      updateTimerDisplay();
+      renderLapList();
+    }
+
+    function updateNormalTimerInitial() {
+      if (!isTimerRunning && timerMode === 'timer' && !hasTimerStartedEver) {
+        const mins = parseInt(document.getElementById('normal-minutes-input').value) || 30;
+        targetTimerSeconds = mins * 60;
+        timerSeconds = targetTimerSeconds;
+        updateTimerDisplay();
+      }
+    }
+
+    function updateAlarmTimerTarget() {
+      const timeVal = document.getElementById('target-time-input').value;
+      if (!timeVal) return;
+      const [hours, minutes] = timeVal.split(':').map(Number);
+      
+      const now = new Date();
+      const target = new Date();
+      target.setHours(hours, minutes, 0, 0);
+
+      if (target <= now) {
+        target.setDate(target.getDate() + 1);
+      }
+
+      alarmTargetTimestamp = target.getTime();
+      const diffSecs = Math.max(0, Math.floor((alarmTargetTimestamp - Date.now()) / 1000));
+      
+      if (!isTimerRunning && !hasTimerStartedEver) {
+        timerSeconds = diffSecs;
+        updateTimerDisplay();
+      }
+    }
+
+    function updatePomodoroInitial() {
+      if (!isTimerRunning && timerMode === 'pomodoro' && loopState === 'work' && !hasTimerStartedEver) {
+        pomoWorkMin = parseInt(document.getElementById('pomo-work-input').value) || 25;
+        timerSeconds = pomoWorkMin * 60;
+        updateTimerDisplay();
+      }
+    }
+
+    function applyPomodoroSettings() {
+      if (isTimerRunning) {
+        showToast('タイマー実行中は変更できません');
+        return;
+      }
+      pomoWorkMin = parseInt(document.getElementById('pomo-work-input').value) || 25;
+      pomoBreakMin = parseInt(document.getElementById('pomo-break-input').value) || 5;
+      totalSets = parseInt(document.getElementById('pomo-sets-input').value) || 4;
+      currentSet = 1;
+      loopState = 'work';
+      timerSeconds = pomoWorkMin * 60;
+      subjectElapsedSeconds = {};
+      hasTimerStartedEver = false;
+      updateSaveButtonState();
+      document.getElementById('timer-loop-status').innerText = `🔥 集中タイム (${currentSet} / ${totalSets}セット)`;
+      updateTimerDisplay();
+      renderLapList();
+      showToast('ポモドーロの設定を適用しました');
+    }
+
+    function handleTimerSubjectChange(newSubId) {}
+
+    function unlockAudio() {
+      const audio = document.getElementById('alarm-sound');
+      if (!audio) return;
+
+      audio.muted = true;
+      audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+        console.log("Audio unlocked");
+      }).catch(e => {
+        audio.muted = false;
+        console.log("Audio unlock failed:", e);
+      });
+    }
+
+    function playAlarmSound() {
+      const audio = document.getElementById('alarm-sound');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log("Audio play blocked or missing:", e));
+        
+        if (alarmTimeout) clearTimeout(alarmTimeout);
+        alarmTimeout = setTimeout(() => {
+          audio.pause();
+          audio.currentTime = 0;
+        }, 5000);
+      }
+    }
+
+    function updateSaveButtonState() {
+      const saveBtn = document.getElementById('save-btn');
+      const totalRecordedSecs = Object.values(subjectElapsedSeconds).reduce((a, b) => a + b, 0);
+
+      if (hasTimerStartedEver && totalRecordedSecs >= 60) {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        saveBtn.disabled = true;
+        saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function startTimer() {
+      unlockAudio();
+      if (isTimerRunning) return;
+      
+      if (timerMode === 'alarm') {
+        updateAlarmTimerTarget();
+        if (timerSeconds <= 0) {
+          showToast('未来の時間を指定してください');
+          return;
+        }
+      }
+
+      isTimerRunning = true;
+      hasTimerStartedEver = true;
+      updateSaveButtonState();
+
+      document.getElementById('start-btn').classList.add('hidden');
+      document.getElementById('pause-btn').classList.remove('hidden');
+      document.getElementById('floating-timer').classList.remove('hidden');
+      document.getElementById('lap-panel').classList.remove('hidden');
+
+      timerInterval = setInterval(() => {
+        const currentSubId = document.getElementById('timer-subject-select').value;
+
+        if (timerMode === 'stopwatch') {
+          timerSeconds++;
+          if (currentSubId !== 'break') {
+            subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + 1;
+          }
+        } else if (timerMode === 'timer' || timerMode === 'alarm') {
+          if (timerMode === 'alarm' && alarmTargetTimestamp) {
+            const left = Math.max(0, Math.floor((alarmTargetTimestamp - Date.now()) / 1000));
+            timerSeconds = left;
+          } else {
+            if (timerSeconds > 0) timerSeconds--;
+          }
+          
+          if (currentSubId !== 'break') {
+            subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + 1;
+          }
+
+          if (timerSeconds <= 0) {
+            playAlarmSound();
+            pauseTimer();
+            showToast('アラーム時刻になりました！自動で記録を保存します');
+            saveTimerSessionAuto();
+            return;
+          }
+        } else {
+          if (timerSeconds > 0) {
+            timerSeconds--;
+            if (loopState === 'work' && currentSubId !== 'break') {
+              subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + 1;
+            }
+          }
+          if (timerSeconds === 0) {
+            playAlarmSound();
+            if (loopState === 'work') {
+              saveTimerSessionAuto(false);
+              if (pomoBreakMin > 0) {
+                loopState = 'break';
+                timerSeconds = pomoBreakMin * 60;
+                document.getElementById('timer-loop-status').innerText = `☕ 休憩タイム (${currentSet} / ${totalSets}セット)`;
+                showToast('集中タイム終了！休憩に入ります。');
+                startTimer();
+                return;
+              }
+            }
+            if (currentSet < totalSets) {
+              currentSet++;
+              loopState = 'work';
+              timerSeconds = pomoWorkMin * 60;
+              document.getElementById('timer-loop-status').innerText = `🔥 集中タイム (${currentSet} / ${totalSets}セット)`;
+              showToast(`セット ${currentSet} を開始します！`);
+              startTimer();
+            } else {
+              pauseTimer();
+              showToast('すべてのセットが完了しました！お疲れ様でした！');
+            }
+            return;
+          }
+        }
+        updateTimerDisplay();
+        renderLapList();
+        updateSaveButtonState();
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      if (!isTimerRunning) return;
+      isTimerRunning = false;
+      clearInterval(timerInterval);
+
+      document.getElementById('start-btn').classList.remove('hidden');
+      document.getElementById('pause-btn').classList.add('hidden');
+      document.getElementById('floating-timer').classList.add('hidden');
+      updateSaveButtonState();
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      currentSet = 1;
+      loopState = 'work';
+      subjectElapsedSeconds = {};
+      hasTimerStartedEver = false;
+      updateSaveButtonState();
+
+      if (timerMode === 'stopwatch') {
+        timerSeconds = 0;
+      } else if (timerMode === 'timer') {
+        const mins = parseInt(document.getElementById('normal-minutes-input').value) || 30;
+        targetTimerSeconds = mins * 60;
+        timerSeconds = targetTimerSeconds;
+      } else if (timerMode === 'alarm') {
+        updateAlarmTimerTarget();
+      } else if (timerMode === 'pomodoro') {
+        timerSeconds = pomoWorkMin * 60;
+        document.getElementById('timer-loop-status').innerText = `🔥 集中タイム (${currentSet} / ${totalSets}セット)`;
+      }
+      updateTimerDisplay();
+      renderLapList();
+      document.getElementById('floating-timer').classList.add('hidden');
+      document.getElementById('lap-panel').classList.add('hidden');
+    }
+
+    function updateTimerDisplay() {
+      let displaySecs = timerSeconds;
+      if (timerMode === 'alarm' && isTimerRunning && alarmTargetTimestamp) {
+        displaySecs = Math.max(0, Math.floor((alarmTargetTimestamp - Date.now()) / 1000));
+      }
+
+      const h = Math.floor(displaySecs / 3600);
+      const m = Math.floor((displaySecs % 3600) / 60);
+      const s = displaySecs % 60;
+
+      const pad = (num) => String(num).padStart(2, '0');
+      const timeStr = `${pad(h)}:${pad(m)}:${pad(s)}`;
+
+      document.getElementById('timer-display').innerText = timeStr;
+      document.getElementById('floating-display').innerText = timeStr;
+
+      const subSelect = document.getElementById('timer-subject-select');
+      const subName = subSelect.options[subSelect.selectedIndex]?.text || '計測中';
+      document.getElementById('floating-label').innerText = timerMode === 'pomodoro' ? `${loopState === 'work' ? '集中' : '休憩'} (${subName})` : subName;
+    }
+
+    function renderLapList() {
+      const lapListContainer = document.getElementById('lap-list');
+      lapListContainer.innerHTML = '';
+
+      const subIds = Object.keys(subjectElapsedSeconds);
+      if (subIds.length === 0) {
+        lapListContainer.innerHTML = '<div class="text-center text-xs text-slate-400 py-2">まだ計測データはありません</div>';
+        return;
+      }
+
+      subIds.forEach((subId, index) => {
+        if (subId === 'break') return;
+        const secs = subjectElapsedSeconds[subId];
+        const sub = window.subjects.find(s => s.id === subId) || { name: '未分類', color: '#6366f1' };
+        
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = secs % 60;
+        const pad = (n) => String(n).padStart(2, '0');
+        const timeStr = `${pad(h)}:${pad(m)}:${pad(s)}`;
+
+        const row = document.createElement('div');
+        row.className = "flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-white border border-slate-100";
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 font-mono">#${index + 1}</span>
+            <span class="inline-flex items-center gap-1 font-medium text-slate-800">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${sub.color}"></span>
+              ${sub.name}
+            </span>
+          </div>
+          <span class="font-mono font-bold text-indigo-600">${timeStr}</span>
+        `;
+        lapListContainer.appendChild(row);
+      });
+    }
+
+    function saveTimerSessionAuto(shouldReset = true) {
+      let totalRecordedMins = 0;
+      const subIds = Object.keys(subjectElapsedSeconds);
+
+      if (subIds.length === 0) {
+        const currentSubId = document.getElementById('timer-subject-select').value;
+        if (currentSubId === 'break') {
+          if (shouldReset) {
+            resetTimer();
+            clearActiveTask();
+          }
+          return;
+        }
+        let fallbackMins = 0;
+        if (timerMode === 'stopwatch') {
+          fallbackMins = Math.round(timerSeconds / 60);
+        } else if (timerMode === 'timer') {
+          fallbackMins = Math.round(targetTimerSeconds / 60);
+        } else if (timerMode === 'alarm') {
+          fallbackMins = 30;
+        } else {
+          fallbackMins = pomoWorkMin;
+        }
+        if (fallbackMins > 0) {
+          subjectElapsedSeconds[currentSubId] = fallbackMins * 60;
+        }
+      }
+
+      Object.keys(subjectElapsedSeconds).forEach(subId => {
+        if (subId === 'break') return;
+        const secs = subjectElapsedSeconds[subId];
+        const mins = Math.round(secs / 60);
+        if (mins > 0) {
+          totalRecordedMins += mins;
+
+          let logNote = timerMode === 'pomodoro' ? 'ポモドーロ学習' : (timerMode === 'timer' ? '通常タイマー' : (timerMode === 'alarm' ? '時刻アラーム' : 'ストップウォッチ'));
+          if (activeTodoTask) {
+            logNote = `[Task] ${activeTodoTask.title}`;
+          }
+
+          window.logs.push({
+            id: 'log_' + Date.now() + '_' + subId,
+            subjectId: subId,
+            date: getTodayString(),
+            minutes: mins,
+            note: logNote
+          });
+        }
+      });
+
+      if (totalRecordedMins > 0) {
+        if (activeTodoTask) {
+          const targetTodo = window.todos.find(t => t.id === activeTodoTask.id);
+          if (targetTodo && !targetTodo.completed) {
+            targetTodo.completed = true;
+            saveTodos();
+          }
+        }
+        saveLogs();
+        updateDashboardData();
+        showToast(`自動保存: ${totalRecordedMins}分を記録しました！`);
+      }
+
+      subjectElapsedSeconds = {};
+      if (shouldReset) {
+        resetTimer();
+        clearActiveTask();
+      }
+    }
+
+    function saveTimerSession() {
+      saveTimerSessionAuto(true);
+    }
+
+    function clearActiveTask() {
+      activeTodoTask = null;
+      document.getElementById('active-task-banner').classList.add('hidden');
+    }
+
+    function startProblemTimer() {
+      const nameInput = document.getElementById('problem-name-input').value.trim();
+      if (!nameInput) {
+        showToast('問題名を入力してください');
+        return;
+      }
+      if (isProbRunning) return;
+      isProbRunning = true;
+
+      document.getElementById('prob-start-btn').classList.add('hidden');
+      document.getElementById('prob-pause-btn').classList.remove('hidden');
+
+      probInterval = setInterval(() => {
+        probSeconds++;
+        updateProblemDisplay();
+      }, 1000);
+    }
+
+    function pauseProblemTimer() {
+      if (!isProbRunning) return;
+      isProbRunning = false;
+      clearInterval(probInterval);
+
+      document.getElementById('prob-start-btn').classList.remove('hidden');
+      document.getElementById('prob-pause-btn').classList.add('hidden');
+    }
+
+    function resetProblemTimer() {
+      pauseProblemTimer();
+      probSeconds = 0;
+      updateProblemDisplay();
+    }
+
+    function updateProblemDisplay() {
+      const h = Math.floor(probSeconds / 3600);
+      const m = Math.floor((probSeconds % 3600) / 60);
+      const s = probSeconds % 60;
+      const pad = (n) => String(n).padStart(2, '0');
+      document.getElementById('problem-display').innerText = `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    function checkProblemComparison() {
+      const name = document.getElementById('problem-name-input').value.trim();
+      const banner = document.getElementById('problem-compare-banner');
+      const text = document.getElementById('problem-compare-text');
+
+      if (!name) {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      const matches = problemLogs.filter(p => p.name === name);
+      if (matches.length === 0) {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      const lastRecord = matches[matches.length - 1];
+      const diff = probSeconds - lastRecord.seconds;
+      const absDiff = Math.abs(diff);
+
+      const h = Math.floor(absDiff / 3600);
+      const m = Math.floor((absDiff % 3600) / 60);
+      const s = absDiff % 60;
+      let diffStr = '';
+      if (h > 0) diffStr += `${h}時間`;
+      if (m > 0 || h > 0) diffStr += `${m}分`;
+      diffStr += `${s}秒`;
+
+      banner.classList.remove('hidden');
+      if (diff === 0) {
+        text.innerText = `前回 (${lastRecord.date}) と全く同じタイムです！`;
+      } else if (diff < 0) {
+        text.innerText = `前回 (${lastRecord.date}) より ${diffStr} 速いです！素晴らしい！`;
+      } else {
+        text.innerText = `前回 (${lastRecord.date}) より ${diffStr} 遅いです。次頑張ろう！`;
+      }
+    }
+
+    function saveProblemRecord() {
+      const name = document.getElementById('problem-name-input').value.trim();
+      const subjectId = document.getElementById('prob-subject-select').value;
+      if (!name) {
+        showToast('問題名を入力してください');
+        return;
+      }
+      if (probSeconds <= 0) {
+        showToast('計測時間が0秒です');
+        return;
+      }
+
+      const newRecord = {
+        id: 'prob_' + Date.now(),
+        subjectId: subjectId,
+        name: name,
+        seconds: probSeconds,
+        date: getTodayString()
+      };
+
+      problemLogs.push(newRecord);
+      localStorage.setItem('st_problem_logs', JSON.stringify(problemLogs));
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+
+      showToast(`「${name}」のタイムを保存しました！`);
+      resetProblemTimer();
+      renderProblemHistory();
+      document.getElementById('problem-compare-banner').classList.add('hidden');
+    }
+
+    function renderProblemHistory() {
+      const tbody = document.getElementById('problem-history-tbody');
+      const emptyState = document.getElementById('problem-history-empty');
+      const filterSub = document.getElementById('prob-filter-subject').value;
+      const searchQuery = document.getElementById('prob-search-input').value.trim().toLowerCase();
+
+      const filterSelect = document.getElementById('prob-filter-subject');
+      const currentFilterVal = filterSelect.value;
+      filterSelect.innerHTML = '<option value="all">すべての科目</option>' + subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      filterSelect.value = currentFilterVal;
+
+      tbody.innerHTML = '';
+
+      let filtered = [...problemLogs];
+      if (filterSub !== 'all') {
+        filtered = filtered.filter(p => p.subjectId === filterSub);
+      }
+      if (searchQuery) {
+        filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery));
+      }
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      filtered.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id.localeCompare(a.id)).forEach(item => {
+        const sub = subjects.find(s => s.id === item.subjectId) || { name: '未分類', color: '#94a3b8' };
+        const h = Math.floor(item.seconds / 3600);
+        const m = Math.floor((item.seconds % 3600) / 60);
+        const s = item.seconds % 60;
+        const pad = (n) => String(n).padStart(2, '0');
+        const timeStr = `${pad(h)}:${pad(m)}:${pad(s)}`;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/80 transition";
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-mono text-xs text-slate-500">${item.date}</td>
+          <td class="py-3 px-4">
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium" style="background-color: ${sub.color}15; color: ${sub.color}">
+              <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${sub.color}"></span>
+              ${sub.name}
+            </span>
+          </td>
+          <td class="py-3 px-4 font-semibold text-slate-800">${item.name}</td>
+          <td class="py-3 px-4 font-mono font-bold text-indigo-600">${timeStr}</td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="deleteProblemRecord('${item.id}')" class="text-slate-400 hover:text-rose-500 p-1 hover:bg-rose-50 rounded transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    function deleteProblemRecord(id) {
+      problemLogs = problemLogs.filter(p => p.id !== id);
+      localStorage.setItem('st_problem_logs', JSON.stringify(problemLogs));
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+      renderProblemHistory();
+      showToast('演習記録を削除しました');
+    }
+
+    function handleManualSubmit(e) {
+      e.preventDefault();
+      const subjectId = document.getElementById('manual-subject').value;
+      const date = document.getElementById('manual-date').value;
+      const hours = parseInt(document.getElementById('manual-hours').value) || 0;
+      const minutes = parseInt(document.getElementById('manual-minutes').value) || 0;
+      const note = document.getElementById('manual-note').value;
+
+      const totalMinutes = (hours * 60) + minutes;
+
+      if (totalMinutes <= 0) {
+        showToast('学習時間を1分以上入力してください');
+        return;
+      }
+
+      const newLog = {
+        id: 'log_' + Date.now(),
+        subjectId: subjectId,
+        date: date,
+        minutes: totalMinutes,
+        note: note || '手動入力'
+      };
+
+      logs.push(newLog);
+      saveLogs();
+
+      document.getElementById('manual-note').value = '';
+      showToast('学習記録を保存しました');
+      updateDashboardData();
+    }
+
+    function setTodoViewMode(mode) {
+      todoViewMode = mode;
+      const listBtn = document.getElementById('todo-view-list-btn');
+      const scheduleBtn = document.getElementById('todo-view-schedule-btn');
+      const calBtn = document.getElementById('todo-view-calendar-btn');
+      const listView = document.getElementById('todo-list-view');
+      const scheduleView = document.getElementById('todo-schedule-view');
+      const calView = document.getElementById('todo-calendar-view');
+
+      const formBoxList = document.getElementById('form-box-list');
+      const formBoxSchedule = document.getElementById('form-box-schedule');
+
+      [listBtn, scheduleBtn, calBtn].forEach(b => {
+        if (b) b.className = "px-3 py-1.5 rounded-lg transition text-slate-600";
+      });
+      [listView, scheduleView, calView].forEach(v => {
+        if (v) v.classList.add('hidden');
+      });
+
+      if (mode === 'list') {
+        if (listBtn) listBtn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
+        if (listView) listView.classList.remove('hidden');
+        if (formBoxList) formBoxList.classList.remove('hidden');
+        if (formBoxSchedule) formBoxSchedule.classList.add('hidden');
+        renderTodoList();
+      } else if (mode === 'schedule') {
+        if (scheduleBtn) scheduleBtn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
+        if (scheduleView) scheduleView.classList.remove('hidden');
+        if (formBoxList) formBoxList.classList.add('hidden');
+        if (formBoxSchedule) formBoxSchedule.classList.remove('hidden');
+        renderScheduleView();
+      } else if (mode === 'calendar') {
+        if (calBtn) calBtn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
+        if (calView) calView.classList.remove('hidden');
+        if (formBoxList) formBoxList.classList.remove('hidden');
+        if (formBoxSchedule) formBoxSchedule.classList.add('hidden');
+        renderCalendarView();
+      }
+    }
+
+    function handleAddTodo(e) {
+      e.preventDefault();
+      const titleInput = document.getElementById('todo-title-input');
+      const subjectSelect = document.getElementById('todo-subject-select');
+      const startDateInput = document.getElementById('todo-startdate-input');
+      const dueDateInput = document.getElementById('todo-duedate-input');
+      const timeInput = document.getElementById('todo-time-input');
+
+      const todayStr = getTodayString();
+      const newTodo = {
+        id: 'todo_' + Date.now(),
+        title: titleInput.value.trim(),
+        subjectId: subjectSelect.value,
+        startDate: startDateInput.value || todayStr,
+        dueDate: dueDateInput.value || todayStr,
+        estimatedMinutes: parseInt(timeInput.value) || null,
+        completed: false,
+        createdAt: todayStr
+      };
+
+      todos.push(newTodo);
+      saveTodos();
+
+      titleInput.value = '';
+      timeInput.value = '';
+      showToast('タスクを追加しました！');
+
+      refreshActiveTodoView();
+    }
+
+    function handleScheduleTaskAdd(e) {
+      e.preventDefault();
+      const editId = document.getElementById('sched-edit-task-id').value;
+      const name = document.getElementById('sched-task-name').value.trim();
+      const color = document.getElementById('sched-task-color').value;
+
+      if (!name) return;
+
+      if (editId) {
+        const task = window.customScheduleTasks.find(t => t.id === editId);
+        if (task) {
+          task.name = name;
+          task.color = color;
+        }
+        cancelScheduleTaskEdit();
+        showToast('スケジュール用タスクを更新しました！');
+      } else {
+        window.customScheduleTasks.push({
+          id: 'ctask_' + Date.now(),
+          name: name,
+          color: color
+        });
+        document.getElementById('sched-task-name').value = '';
+        showToast('スケジュール用タスクを追加しました！');
+      }
+
+      localStorage.setItem('st_custom_sched_tasks', JSON.stringify(window.customScheduleTasks));
+      renderCustomScheduleTasksList();
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+    }
+
+    function editCustomScheduleTask(id) {
+      const task = window.customScheduleTasks.find(t => t.id === id);
+      if (!task) return;
+
+      document.getElementById('sched-edit-task-id').value = task.id;
+      document.getElementById('sched-task-name').value = task.name;
+      document.getElementById('sched-task-color').value = task.color;
+      document.getElementById('sched-task-submit-btn').innerText = '更新';
+      document.getElementById('sched-task-cancel-btn').classList.remove('hidden');
+    }
+
+    function cancelScheduleTaskEdit() {
+      document.getElementById('sched-edit-task-id').value = '';
+      document.getElementById('sched-task-name').value = '';
+      document.getElementById('sched-task-color').value = '#3b82f6';
+      document.getElementById('sched-task-submit-btn').innerText = '追加';
+      document.getElementById('sched-task-cancel-btn').classList.add('hidden');
+    }
+
+    function renderCustomScheduleTasksList() {
+      const container = document.getElementById('schedule-custom-tasks-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (window.customScheduleTasks.length === 0) {
+        container.innerHTML = `<div class="text-[11px] text-slate-400 text-center py-2">タスクがありません</div>`;
+        return;
+      }
+
+      window.customScheduleTasks.forEach(task => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between bg-slate-50 border border-slate-200/80 p-2 rounded-xl text-xs";
+        item.innerHTML = `
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${task.color}"></span>
+            <span class="font-medium text-slate-800 truncate">${task.name}</span>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <button onclick="editCustomScheduleTask('${task.id}')" class="text-slate-400 hover:text-indigo-600 p-1 rounded transition" title="編集"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+            <button onclick="deleteCustomScheduleTask('${task.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded transition" title="削除"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+      lucide.createIcons();
+    }
+
+    function deleteCustomScheduleTask(id) {
+      window.customScheduleTasks = window.customScheduleTasks.filter(t => t.id !== id);
+      localStorage.setItem('st_custom_sched_tasks', JSON.stringify(window.customScheduleTasks));
+      renderCustomScheduleTasksList();
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+      showToast('スケジュール用タスクを削除しました');
+    }
+
+    function toggleTodoStatus(id) {
+      const todo = todos.find(t => t.id === id);
+      if (todo) {
+        todo.completed = !todo.completed;
+        saveTodos();
+        refreshActiveTodoView();
+      }
+    }
+
+    function deleteTodo(id) {
+      todos = todos.filter(t => t.id !== id);
+      saveTodos();
+      refreshActiveTodoView();
+      showToast('タスクを削除しました');
+    }
+
+    function editTodo(id) {
+      const todo = todos.find(t => t.id === id);
+      if (!todo) return;
+
+      document.getElementById('edit-todo-id').value = todo.id;
+      document.getElementById('edit-todo-title').value = todo.title;
+      
+      const select = document.getElementById('edit-todo-subject');
+      select.innerHTML = subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      select.value = todo.subjectId;
+
+      document.getElementById('edit-todo-startdate').value = todo.startDate || getTodayString();
+      document.getElementById('edit-todo-duedate').value = todo.dueDate || '';
+      document.getElementById('edit-todo-time').value = todo.estimatedMinutes || '';
+
+      document.getElementById('edit-todo-modal').classList.remove('hidden');
+    }
+
+    function closeEditTodoModal() {
+      document.getElementById('edit-todo-modal').classList.add('hidden');
+    }
+
+    function handleEditTodoSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('edit-todo-id').value;
+      const todo = todos.find(t => t.id === id);
+      if (todo) {
+        todo.title = document.getElementById('edit-todo-title').value.trim();
+        todo.subjectId = document.getElementById('edit-todo-subject').value;
+        todo.startDate = document.getElementById('edit-todo-startdate').value || getTodayString();
+        todo.dueDate = document.getElementById('edit-todo-duedate').value || null;
+        todo.estimatedMinutes = parseInt(document.getElementById('edit-todo-time').value) || null;
+        saveTodos();
+        closeEditTodoModal();
+        refreshActiveTodoView();
+        showToast('タスクを更新しました');
+      }
+    }
+
+    function clearCompletedTodos() {
+      const completedList = todos.filter(t => t.completed);
+      if (completedList.length === 0) {
+        showToast('完了済みのタスクはありません');
+        return;
+      }
+
+      todos = todos.filter(t => !t.completed);
+      saveTodos();
+      refreshActiveTodoView();
+      showToast(`${completedList.length}件の完了タスクを一括削除しました`);
+    }
+
+    function setTodoFilter(filter) {
+      currentTodoFilter = filter;
+      ['all', 'pending', 'completed'].forEach(f => {
+        const btn = document.getElementById(`filter-${f}-btn`);
+        if (btn) {
+          if (f === filter) {
+            btn.className = "px-3 py-1.5 rounded-md bg-white shadow-sm text-indigo-600 font-semibold transition";
+          } else {
+            btn.className = "px-3 py-1.5 rounded-md text-slate-600 transition";
+          }
+        }
+      });
+      renderTodoList();
+    }
+
+    function refreshActiveTodoView() {
+      if (todoViewMode === 'list') renderTodoList();
+      else if (todoViewMode === 'schedule') renderScheduleView();
+      else if (todoViewMode === 'calendar') renderCalendarView();
+    }
+
+    function startTimerForTodo(todoId) {
+      const todo = todos.find(t => t.id === todoId);
+      if (!todo) return;
+
+      activeTodoTask = todo;
+      document.getElementById('active-task-title').innerText = todo.title;
+      document.getElementById('active-task-banner').classList.remove('hidden');
+
+      document.getElementById('timer-subject-select').value = todo.subjectId;
+
+      switchTab('timer');
+      showToast(`「${todo.title}」でタイマーを準備しました`);
+    }
+
+    function getRangeBadge(start, due, completed) {
+      if (!due) return '';
+      const today = getTodayString();
+      const s = start || today;
+
+      if (today >= s && today <= due) {
+        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-800"><i data-lucide="clock" class="w-3 h-3"></i> 実施期間中 (${s} 〜 ${due})</span>`;
+      }
+      if (due < today && !completed) {
+        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-100 text-rose-700"><i data-lucide="alert-circle" class="w-3 h-3"></i> 期限超過 (${due})</span>`;
+      }
+      return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600"><i data-lucide="calendar" class="w-3 h-3"></i> ${s} 〜 ${due}</span>`;
+    }
+
+    function renderTodoList() {
+      const container = document.getElementById('todo-container');
+      const emptyState = document.getElementById('todo-empty');
+      if (!container) return;
+
+      container.innerHTML = '';
+      let filteredTodos = [...todos];
+
+      filteredTodos.sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        return 0;
+      });
+
+      if (currentTodoFilter === 'pending') {
+        filteredTodos = filteredTodos.filter(t => !t.completed);
+      } else if (currentTodoFilter === 'completed') {
+        filteredTodos = filteredTodos.filter(t => t.completed);
+      }
+
+      const totalCount = todos.length;
+      const completedCount = todos.filter(t => t.completed).length;
+      const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      const progressText = document.getElementById('todo-progress-text');
+      if (progressText) progressText.innerText = `${completedCount} / ${totalCount} 完了 (${percent}%)`;
+
+      if (filteredTodos.length === 0) {
+        if (emptyState) emptyState.classList.remove('hidden');
+        return;
+      } else {
+        if (emptyState) emptyState.classList.add('hidden');
+      }
+
+      filteredTodos.forEach(todo => {
+        const subject = subjects.find(s => s.id === todo.subjectId) || { name: '未分類', color: '#94a3b8' };
+        const badge = getRangeBadge(todo.startDate, todo.dueDate, todo.completed);
+
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-xl border bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition shadow-sm ${todo.completed ? 'opacity-60 bg-slate-50 border-slate-200' : 'border-slate-200/80 hover:border-indigo-200'}`;
+
+        card.innerHTML = `
+          <div class="flex items-start gap-3">
+            <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleTodoStatus('${todo.id}')" class="mt-1 w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+            <div>
+              <div class="font-medium text-slate-800 ${todo.completed ? 'line-through text-slate-400' : ''}">${todo.title}</div>
+              <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium" style="background-color: ${subject.color}15; color: ${subject.color}">
+                  <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${subject.color}"></span>
+                  ${subject.name}
+                </span>
+                ${badge}
+                ${todo.estimatedMinutes ? `<span class="text-xs text-slate-400 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${todo.estimatedMinutes}分</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 self-end sm:self-center">
+            ${!todo.completed ? `
+              <button onclick="startTimerForTodo('${todo.id}')" class="flex items-center gap-1 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold px-3 py-1.5 rounded-lg transition">
+                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> タイマー
+              </button>
+            ` : ''}
+            <button onclick="editTodo('${todo.id}')" class="text-slate-400 hover:text-indigo-600 p-1.5 hover:bg-indigo-50 rounded-lg transition" title="編集"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+            <button onclick="deleteTodo('${todo.id}')" class="text-slate-400 hover:text-rose-500 p-1.5 hover:bg-rose-50 rounded-lg transition" title="削除"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function timeToMinutes(tStr) {
+      if (tStr === '24:00') return 1440;
+      const [h, m] = tStr.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function renderScheduleView() {
+      const todayObj = new Date();
+      const tomorrowObj = new Date();
+      tomorrowObj.setDate(todayObj.getDate() + 1);
+
+      const todayStr = formatDateObj(todayObj);
+      const tomorrowStr = formatDateObj(tomorrowObj);
+
+      document.getElementById('schedule-today-date-label').innerText = todayStr;
+      document.getElementById('schedule-tomorrow-date-label').innerText = tomorrowStr;
+
+      renderPieSchedule('today', todayStr);
+      renderPieSchedule('tomorrow', tomorrowStr);
+      renderSchedulePresetsList();
+    }
+
+    function renderPieSchedule(dayType, dateStr) {
+      const canvasId = dayType === 'today' ? 'todayPieChart' : 'tomorrowPieChart';
+      const listTextId = dayType === 'today' ? 'schedule-today-list-text' : 'schedule-tomorrow-list-text';
+      
+      const dayItems = window.timeSchedules.filter(s => s.date === dateStr);
+      dayItems.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+      const listContainer = document.getElementById(listTextId);
+      listContainer.innerHTML = '';
+
+      if (dayItems.length === 0) {
+        listContainer.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">予定がありません。「予定を追加」ボタンから登録してください</div>`;
+      } else {
+        dayItems.forEach(item => {
+          const cTask = window.customScheduleTasks.find(t => t.name === item.content);
+          const itemColor = item.color || (cTask ? cTask.color : '#3b82f6');
+
+          const itemDiv = document.createElement('div');
+          itemDiv.className = "flex items-center justify-between bg-white border border-slate-200/80 p-2 rounded-xl text-xs";
+
+          itemDiv.innerHTML = `
+            <div class="truncate text-slate-800 font-medium flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${itemColor}"></span>
+              <span class="font-mono text-indigo-600 font-bold">${item.startTime}〜${item.endTime}</span>
+              <span class="truncate">${item.content}</span>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <button onclick="openScheduleModal('${dayType}', '${item.id}')" class="text-slate-400 hover:text-indigo-600 p-1 transition" title="編集"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+              <button onclick="deleteScheduleItem('${item.id}')" class="text-slate-400 hover:text-rose-500 p-1 transition" title="削除"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </div>
+          `;
+          listContainer.appendChild(itemDiv);
+        });
+      }
+
+      let labels = [];
+      let data = [];
+      let backgroundColors = [];
+
+      let currentMins = 0;
+      dayItems.forEach((item) => {
+        const startMins = timeToMinutes(item.startTime);
+        const endMins = timeToMinutes(item.endTime);
+
+        if (startMins > currentMins) {
+          labels.push('自由時間 / 予定なし');
+          data.push(startMins - currentMins);
+          backgroundColors.push('#e2e8f0');
+        }
+
+        if (endMins > startMins) {
+          const cTask = window.customScheduleTasks.find(t => t.name === item.content);
+          let itemColor = item.color || (cTask ? cTask.color : '#3b82f6');
+
+          labels.push(`${item.content} (${item.startTime}〜${item.endTime})`);
+          data.push(endMins - startMins);
+          backgroundColors.push(itemColor);
+          currentMins = Math.max(currentMins, endMins);
+        }
+      });
+
+      if (currentMins < 1440) {
+        labels.push('自由時間 / 予定なし');
+        data.push(1440 - currentMins);
+        backgroundColors.push('#e2e8f0');
+      }
+
+      const canvasEl = document.getElementById(canvasId);
+      if (!canvasEl) return;
+      const ctx = canvasEl.getContext('2d');
+
+      if (dayType === 'today') {
+        if (todayPieChartInstance) todayPieChartInstance.destroy();
+      } else {
+        if (tomorrowPieChartInstance) tomorrowPieChartInstance.destroy();
+      }
+
+      const chartObj = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: backgroundColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const mins = context.parsed;
+                  const h = Math.floor(mins / 60);
+                  const m = mins % 60;
+                  return ` ${context.label}: 約 ${h}時間 ${m > 0 ? m + '分' : ''}`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (dayType === 'today') todayPieChartInstance = chartObj;
+      else tomorrowPieChartInstance = chartObj;
+
+      lucide.createIcons();
+    }
+
+    function openScheduleModal(dayType, editId = null) {
+      document.getElementById('schedule-modal-day-type').value = dayType;
+      document.getElementById('schedule-modal-edit-id').value = editId || '';
+
+      const todayObj = new Date();
+      if (dayType === 'tomorrow') todayObj.setDate(todayObj.getDate() + 1);
+      const dateStr = formatDateObj(todayObj);
+
+      const daySchedules = window.timeSchedules.filter(s => s.date === dateStr);
+
+      let defaultStart = "08:00";
+      if (!editId && daySchedules.length > 0) {
+        daySchedules.sort((a, b) => timeToMinutes(b.endTime) - timeToMinutes(a.endTime));
+        defaultStart = daySchedules[0].endTime;
+      }
+
+      let defaultEnd = "09:00";
+      const [sh, sm] = defaultStart.split(':').map(Number);
+      let endTotalMin = (sh * 60 + sm) + 60;
+      if (endTotalMin > 1440) endTotalMin = 1440;
+      const eh = Math.floor(endTotalMin / 60);
+      const em = endTotalMin % 60;
+      defaultEnd = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+
+      let targetEditItem = null;
+      if (editId) {
+        targetEditItem = window.timeSchedules.find(s => s.id === editId);
+        if (targetEditItem) {
+          defaultStart = targetEditItem.startTime;
+          defaultEnd = targetEditItem.endTime;
+        }
+      }
+
+      document.getElementById('schedule-modal-title').innerText = editId ? '予定の編集' : `${dayType === 'today' ? '今日' : '明日'} (${dateStr}) の予定追加`;
+      document.getElementById('schedule-modal-submit-btn').innerText = editId ? '変更を保存する' : '予定を追加する';
+
+      let timeOptions = '';
+      for (let h = 0; h <= 24; h++) {
+        for (let m of (h === 24 ? [0] : [0, 30])) {
+          const tStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          timeOptions += `<option value="${tStr}">${tStr}</option>`;
+        }
+      }
+      document.getElementById('schedule-modal-start').innerHTML = timeOptions;
+      document.getElementById('schedule-modal-end').innerHTML = timeOptions;
+
+      document.getElementById('schedule-modal-start').value = defaultStart;
+      document.getElementById('schedule-modal-end').value = defaultEnd;
+
+      const todoSelect = document.getElementById('schedule-modal-custom-task-select');
+      todoSelect.innerHTML = '<option value="">-- スケジュール用タスクから選択 --</option>' + window.customScheduleTasks.map(t => `<option value="${t.name}" data-color="${t.color}">${t.name}</option>`).join('');
+
+      if (targetEditItem) {
+        document.getElementById('schedule-modal-content').value = targetEditItem.content;
+      } else {
+        document.getElementById('schedule-modal-content').value = '';
+      }
+
+      document.getElementById('schedule-modal').classList.remove('hidden');
+    }
+
+    function closeScheduleModal() {
+      document.getElementById('schedule-modal').classList.add('hidden');
+    }
+
+    function fillScheduleFromCustomTask(val) {
+      if (val) {
+        document.getElementById('schedule-modal-content').value = val;
+        const matched = window.customScheduleTasks.find(t => t.name === val);
+        if (matched) {
+          window._tempSelectedColor = matched.color;
+        }
+      } else {
+        window._tempSelectedColor = null;
+      }
+    }
+
+    function handleScheduleModalSubmit(e) {
+      e.preventDefault();
+      const dayType = document.getElementById('schedule-modal-day-type').value;
+      const editId = document.getElementById('schedule-modal-edit-id').value;
+      const startTime = document.getElementById('schedule-modal-start').value;
+      const endTime = document.getElementById('schedule-modal-end').value;
+      const content = document.getElementById('schedule-modal-content').value.trim();
+
+      const todayObj = new Date();
+      if (dayType === 'tomorrow') todayObj.setDate(todayObj.getDate() + 1);
+      const dateStr = formatDateObj(todayObj);
+
+      if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+        showToast('終了時間は開始時間より後に設定してください');
+        return;
+      }
+
+      const cTask = window.customScheduleTasks.find(t => t.name === content);
+      let assignedColor = window._tempSelectedColor || (cTask ? cTask.color : '#3b82f6');
+      window._tempSelectedColor = null;
+
+      if (editId) {
+        const target = window.timeSchedules.find(s => s.id === editId);
+        if (target) {
+          target.startTime = startTime;
+          target.endTime = endTime;
+          target.content = content;
+          target.color = assignedColor;
+        }
+        showToast('スケジュールを更新しました！');
+      } else {
+        window.timeSchedules.push({
+          id: 'sch_' + Date.now(),
+          date: dateStr,
+          startTime: startTime,
+          endTime: endTime,
+          content: content,
+          color: assignedColor
+        });
+        showToast('スケジュールに追加しました！');
+      }
+
+      localStorage.setItem('st_time_schedules', JSON.stringify(window.timeSchedules));
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+      closeScheduleModal();
+      renderScheduleView();
+    }
+
+    function deleteScheduleItem(id) {
+      window.timeSchedules = window.timeSchedules.filter(s => s.id !== id);
+      localStorage.setItem('st_time_schedules', JSON.stringify(window.timeSchedules));
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+      renderScheduleView();
+      showToast('スケジュールを削除しました');
+    }
+
+    function copyScheduleToTomorrow() {
+      const todayObj = new Date();
+      const tomorrowObj = new Date();
+      tomorrowObj.setDate(todayObj.getDate() + 1);
+
+      const todayStr = formatDateObj(todayObj);
+      const tomorrowStr = formatDateObj(tomorrowObj);
+
+      const todayItems = window.timeSchedules.filter(s => s.date === todayStr);
+      if (todayItems.length === 0) {
+        showToast('コピーする今日の予定がありません');
+        return;
+      }
+
+      window.timeSchedules = window.timeSchedules.filter(s => s.date !== tomorrowStr);
+      todayItems.forEach(item => {
+        window.timeSchedules.push({
+          ...item,
+          id: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          date: tomorrowStr
+        });
+      });
+
+      localStorage.setItem('st_time_schedules', JSON.stringify(window.timeSchedules));
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+      renderScheduleView();
+      showToast('今日のスケジュールを明日にコピーしました！');
+    }
+
+    function saveCurrentScheduleAsPreset() {
+      const presetName = document.getElementById('sched-preset-name').value.trim();
+      if (!presetName) {
+        showToast('テンプレート名を入力してください');
+        return;
+      }
+
+      const todayObj = new Date();
+      const todayStr = formatDateObj(todayObj);
+      const todayItems = window.timeSchedules.filter(s => s.date === todayStr);
+
+      if (todayItems.length === 0) {
+        showToast('保存する今日の予定がありません');
+        return;
+      }
+
+      window.schedulePresets[presetName] = todayItems.map(i => ({
+        startTime: i.startTime,
+        endTime: i.endTime,
+        content: i.content,
+        color: i.color
+      }));
+
+      localStorage.setItem('st_sched_presets', JSON.stringify(window.schedulePresets));
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+      document.getElementById('sched-preset-name').value = '';
+      renderSchedulePresetsList();
+      showToast(`テンプレート「${presetName}」を保存しました！`);
+    }
+
+    function renderSchedulePresetsList() {
+      const container = document.getElementById('schedule-presets-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const keys = Object.keys(window.schedulePresets);
+      if (keys.length === 0) {
+        container.innerHTML = `<span class="text-[11px] text-slate-400">保存されたテンプレートはありません</span>`;
+        return;
+      }
+
+      keys.forEach(presetName => {
+        const badge = document.createElement('div');
+        badge.className = "flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs transition cursor-pointer";
+        badge.innerHTML = `
+          <span onclick="promptLoadPreset('${presetName}')" class="font-medium">${presetName}を読み込む</span>
+          <button onclick="deleteSchedulePreset(event, '${presetName}')" class="text-slate-400 hover:text-rose-500 ml-1"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+        `;
+        container.appendChild(badge);
+      });
+      lucide.createIcons();
+    }
+
+    function promptLoadPreset(presetName) {
+      document.getElementById('preset-load-name-label').innerText = presetName;
+      document.getElementById('preset-load-target-name').value = presetName;
+      document.getElementById('preset-load-modal').classList.remove('hidden');
+    }
+
+    function closePresetLoadModal() {
+      document.getElementById('preset-load-modal').classList.add('hidden');
+    }
+
+    function confirmLoadPreset(dayType) {
+      const presetName = document.getElementById('preset-load-target-name').value;
+      const presetItems = window.schedulePresets[presetName];
+      if (!presetItems) return;
+
+      const targetObj = new Date();
+      if (dayType === 'tomorrow') targetObj.setDate(targetObj.getDate() + 1);
+      const targetStr = formatDateObj(targetObj);
+
+      window.timeSchedules = window.timeSchedules.filter(s => s.date !== targetStr);
+      presetItems.forEach(item => {
+        window.timeSchedules.push({
+          id: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          date: targetStr,
+          startTime: item.startTime,
+          endTime: item.endTime,
+          content: item.content,
+          color: item.color
+        });
+      });
+
+      localStorage.setItem('st_time_schedules', JSON.stringify(window.timeSchedules));
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+      closePresetLoadModal();
+      renderScheduleView();
+      showToast(`テンプレート「${presetName}」を${dayType === 'today' ? '今日' : '明日'}に読み込みました！`);
+    }
+
+    function deleteSchedulePreset(e, presetName) {
+      e.stopPropagation();
+      delete window.schedulePresets[presetName];
+      localStorage.setItem('st_sched_presets', JSON.stringify(window.schedulePresets));
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+      renderSchedulePresetsList();
+      showToast(`テンプレート「${presetName}」を削除しました`);
+    }
+
+    function renderCalendarView() {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+      document.getElementById('calendar-month-year').innerText = `${year}年 ${month + 1}月`;
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDayOfWeek = firstDay.getDay(); 
+      const totalDays = lastDay.getDate();
+
+      const container = document.getElementById('calendar-days-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const todayStr = getTodayString();
+
+      for (let i = 0; i < startDayOfWeek; i++) {
+        const blank = document.createElement('div');
+        blank.className = "min-h-[85px] bg-slate-50/50 rounded-lg border border-slate-100/50 p-1";
+        container.appendChild(blank);
+      }
+
+      for (let day = 1; day <= totalDays; day++) {
+        const currentMonthStr = String(month + 1).padStart(2, '0');
+        const currentDayStr = String(day).padStart(2, '0');
+        const dateStr = `${year}-${currentMonthStr}-${currentDayStr}`;
+        const isToday = dateStr === todayStr;
+
+        const dayTodos = todos.filter(t => {
+          const s = t.startDate || t.dueDate || dateStr;
+          const d = t.dueDate || s;
+          return dateStr >= s && dateStr <= d;
+        });
+
+        const dayCell = document.createElement('div');
+        dayCell.className = `min-h-[85px] p-1.5 rounded-lg border flex flex-col justify-between transition cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/20 ${isToday ? 'bg-indigo-50/50 border-indigo-300' : 'bg-white border-slate-100'}`;
+        dayCell.onclick = () => openDayDetailModal(dateStr);
+
+        let todosHtml = '';
+        dayTodos.slice(0, 3).forEach(t => {
+          const sub = subjects.find(s => s.id === t.subjectId) || { color: '#6366f1' };
+          todosHtml += `
+            <div title="${t.title}" class="text-[10px] truncate px-1 py-0.5 rounded font-medium my-0.5 border flex items-center justify-between gap-1" style="background-color: ${sub.color}15; border-color: ${sub.color}30; color: ${sub.color}">
+              <span class="${t.completed ? 'line-through opacity-60' : ''} truncate">${t.title}</span>
+            </div>
+          `;
+        });
+        if (dayTodos.length > 3) {
+          todosHtml += `<div class="text-[9px] text-slate-400 font-semibold text-right">+他 ${dayTodos.length - 3}件</div>`;
+        }
+
+        dayCell.innerHTML = `
+          <div>
+            <div class="text-xs font-bold ${isToday ? 'text-indigo-600' : 'text-slate-600'} mb-1">${day}日</div>
+            <div class="space-y-0.5">${todosHtml}</div>
+          </div>
+        `;
+        container.appendChild(dayCell);
+      }
+      lucide.createIcons();
+    }
+
+    function openDayDetailModal(dateStr) {
+      document.getElementById('modal-date-title').innerText = dateStr;
+      document.getElementById('modal-target-date').value = dateStr;
+
+      const subjectSelect = document.getElementById('modal-todo-subject');
+      subjectSelect.innerHTML = subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+      renderModalTodoList(dateStr);
+      document.getElementById('day-detail-modal').classList.remove('hidden');
+    }
+
+    function closeDayDetailModal() {
+      document.getElementById('day-detail-modal').classList.add('hidden');
+      refreshActiveTodoView();
+    }
+
+    function renderModalTodoList(dateStr) {
+      const container = document.getElementById('modal-todo-list');
+      container.innerHTML = '';
+
+      const dayTodos = todos.filter(t => {
+        const s = t.startDate || t.dueDate || dateStr;
+        const d = t.dueDate || s;
+        return dateStr >= s && dateStr <= d;
+      });
+
+      if (dayTodos.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-400 text-center py-6">この日のタスクはありません</div>`;
+        return;
+      }
+
+      dayTodos.forEach(t => {
+        const sub = subjects.find(s => s.id === t.subjectId) || { name: '未分類', color: '#6366f1' };
+        const itemDiv = document.createElement('div');
+        itemDiv.className = `p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between text-xs ${t.completed ? 'opacity-60' : ''}`;
+        itemDiv.innerHTML = `
+          <div class="flex items-center gap-2.5 truncate">
+            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTodoStatus('${t.id}'); renderModalTodoList('${dateStr}');" class="w-4 h-4 rounded border-slate-300 text-indigo-600 cursor-pointer">
+            <div>
+              <div class="font-medium text-slate-800 ${t.completed ? 'line-through text-slate-400' : ''}">${t.title}</div>
+              <span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium mt-0.5" style="background-color: ${sub.color}15; color: ${sub.color}">${sub.name}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="editTodo('${t.id}'); closeDayDetailModal();" class="text-slate-400 hover:text-indigo-600 p-1 rounded" title="編集"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+            <button onclick="deleteTodo('${t.id}'); renderModalTodoList('${dateStr}');" class="text-slate-400 hover:text-rose-500 p-1 rounded" title="削除"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          </div>
+        `;
+        container.appendChild(itemDiv);
+      });
+      lucide.createIcons();
+    }
+
+    function handleModalAddTodo(e) {
+      e.preventDefault();
+      const dateStr = document.getElementById('modal-target-date').value;
+      const title = document.getElementById('modal-todo-title').value.trim();
+      const subjectId = document.getElementById('modal-todo-subject').value;
+      const time = parseInt(document.getElementById('modal-todo-time').value) || null;
+
+      if (!title) return;
+
+      const newTodo = {
+        id: 'todo_' + Date.now(),
+        title: title,
+        subjectId: subjectId,
+        startDate: dateStr,
+        dueDate: dateStr,
+        estimatedMinutes: time,
+        completed: false,
+        createdAt: getTodayString()
+      };
+
+      todos.push(newTodo);
+      saveTodos();
+
+      document.getElementById('modal-todo-title').value = '';
+      document.getElementById('modal-todo-time').value = '';
+      renderModalTodoList(dateStr);
+      showToast('タスクを追加しました！');
+    }
+
+    function changeCalendarMonth(offset) {
+      calendarDate.setMonth(calendarDate.getMonth() + offset);
+      renderCalendarView();
+    }
+
+    function resetCalendarToToday() {
+      calendarDate = new Date();
+      renderCalendarView();
+    }
+
+    function setChartRange(range) {
+      currentChartRange = range;
+      ['7days', 'month', 'all'].forEach(r => {
+        const btn = document.getElementById(`chart-range-${r}`);
+        if (btn) {
+          if (r === range) btn.className = "px-3 py-1 rounded-md bg-white shadow-sm text-indigo-600 font-semibold transition";
+          else btn.className = "px-3 py-1 rounded-md text-slate-600 transition";
+        }
+      });
+      renderMainChart();
+    }
+
+    function updateDashboardData() {
+      const todayStr = getTodayString();
+      let todayMins = 0;
+      let totalMins = 0;
+      const weekStart = getNDaysAgoDate(6);
+      let weekMins = 0;
+
+      logs.forEach(log => {
+        totalMins += log.minutes;
+        if (log.date === todayStr) todayMins += log.minutes;
+        if (log.date >= weekStart && log.date <= todayStr) weekMins += log.minutes;
+      });
+
+      document.getElementById('kpi-today').innerText = formatMinutes(todayMins);
+      document.getElementById('kpi-week').innerText = formatMinutes(weekMins);
+      document.getElementById('kpi-total').innerText = formatMinutes(totalMins);
+      document.getElementById('sidebar-today-time').innerText = formatMinutes(todayMins);
+      
+      const goalMins = dailyGoal * 60;
+      const percent = Math.min(100, Math.round((todayMins / goalMins) * 100));
+      document.getElementById('sidebar-goal-bar').style.width = `${percent}%`;
+      document.getElementById('sidebar-goal-text').innerText = `目標: ${dailyGoal}h (${percent}%)`;
+      
+      const mobTimeEl = document.getElementById('mobile-sidebar-today-time');
+      const mobGoalEl = document.getElementById('mobile-sidebar-goal-text');
+      if (mobTimeEl) mobTimeEl.innerText = formatMinutes(todayMins);
+      if (mobGoalEl) mobGoalEl.innerText = `目標 ${dailyGoal}h (${percent}%)`;
+
+      document.getElementById('kpi-streak').innerText = `${calculateStreak()}日`;
+
+      renderMainChart();
+      renderSubjectChart();
+    }
+
+    function calculateStreak() {
+      if (logs.length === 0) return 0;
+      const uniqueDates = [...new Set(logs.map(l => l.date))].sort().reverse();
+      const todayStr = getTodayString();
+      const yesterdayStr = getNDaysAgoDate(1);
+
+      if (!uniqueDates.includes(todayStr) && !uniqueDates.includes(yesterdayStr)) return 0;
+
+      let streak = 0;
+      let checkDate = new Date();
+      if (!uniqueDates.includes(todayStr)) checkDate.setDate(checkDate.getDate() - 1);
+
+      while (true) {
+        const dateStr = formatDateObj(checkDate);
+        if (uniqueDates.includes(dateStr)) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      return streak;
+    }
+
+    function renderMainChart() {
+      const ctx = document.getElementById('weeklyChart').getContext('2d');
+      let labels = [];
+      let timeKeys = [];
+
+      if (currentChartRange === '7days') {
+        for (let i = 6; i >= 0; i--) {
+          const dateStr = getNDaysAgoDate(i);
+          timeKeys.push(dateStr);
+          labels.push(dateStr.slice(5).replace('-', '/'));
+        }
+      } else if (currentChartRange === 'month') {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          timeKeys.push(dateStr);
+          labels.push(`${day}日`);
+        }
+      } else if (currentChartRange === 'all') {
+        const monthKeysSet = new Set();
+        logs.forEach(l => monthKeysSet.add(l.date.slice(0, 7)));
+        const sortedMonths = Array.from(monthKeysSet).sort();
+        if (sortedMonths.length === 0) {
+          timeKeys = [getTodayString().slice(0, 7)];
+          labels = [getTodayString().slice(0, 7).replace('-', '/')];
+        } else {
+          sortedMonths.forEach(mKey => {
+            timeKeys.push(mKey);
+            labels.push(mKey.replace('-', '/'));
+          });
+        }
+      }
+
+      const datasets = subjects.map(sub => {
+        const dataArr = timeKeys.map(key => {
+          let matchingLogs = currentChartRange === 'all' ? logs.filter(l => l.subjectId === sub.id && l.date.startsWith(key)) : logs.filter(l => l.subjectId === sub.id && l.date === key);
+          const totalMins = matchingLogs.reduce((acc, curr) => acc + curr.minutes, 0);
+          return (totalMins / 60).toFixed(1);
+        });
+        return { label: sub.name, data: dataArr, backgroundColor: sub.color, borderRadius: 4 };
+      });
+
+      if (weeklyChartInstance) weeklyChartInstance.destroy();
+      weeklyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true, font: { size: 11 } } }
+          },
+          scales: {
+            x: { stacked: true, grid: { display: false } },
+            y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: value => value + ' h' } }
+          }
+        }
+      });
+    }
+
+    function renderSubjectChart() {
+      const ctx = document.getElementById('subjectChart').getContext('2d');
+      const subjectTotals = {};
+      subjects.forEach(s => subjectTotals[s.id] = 0);
+      logs.forEach(l => {
+        if (subjectTotals[l.subjectId] !== undefined) subjectTotals[l.subjectId] += l.minutes;
+      });
+
+      const labels = [], data = [], colors = [];
+      subjects.forEach(s => {
+        if (subjectTotals[s.id] > 0) {
+          labels.push(s.name);
+          data.push(subjectTotals[s.id]);
+          colors.push(s.color);
+        }
+      });
+
+      if (subjectChartInstance) subjectChartInstance.destroy();
+      if (data.length === 0) return;
+
+      subjectChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+
+    function setHistoryFilter(filter) {
+      historyPeriodFilter = filter;
+      ['all', 'today', 'week', 'month'].forEach(f => {
+        const btn = document.getElementById(`hist-filter-${f}`);
+        if (btn) {
+          if (f === filter) btn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
+          else btn.className = "px-3 py-1.5 rounded-lg transition text-slate-600";
+        }
+      });
+      renderHistoryTable();
+    }
+
+    function renderHistoryTable() {
+      const tbody = document.getElementById('history-tbody');
+      const emptyState = document.getElementById('history-empty');
+      if (!tbody) return;
+
+      const filterSub = document.getElementById('history-filter-subject').value;
+      const searchQuery = document.getElementById('history-search-input').value.trim().toLowerCase();
+
+      const filterSelect = document.getElementById('history-filter-subject');
+      const currentFilterVal = filterSelect.value;
+      filterSelect.innerHTML = '<option value="all">すべての科目</option>' + subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      filterSelect.value = currentFilterVal;
+
+      tbody.innerHTML = '';
+      const todayStr = getTodayString();
+      const weekStart = getNDaysAgoDate(6);
+      const monthStart = todayStr.slice(0, 7) + '-01';
+
+      let filteredLogs = [...logs];
+      if (historyPeriodFilter === 'today') {
+        filteredLogs = filteredLogs.filter(l => l.date === todayStr);
+        document.getElementById('history-period-label').innerText = '本日の勉強時間';
+      } else if (historyPeriodFilter === 'week') {
+        filteredLogs = filteredLogs.filter(l => l.date >= weekStart && l.date <= todayStr);
+        document.getElementById('history-period-label').innerText = '直近7日間の勉強時間';
+      } else if (historyPeriodFilter === 'month') {
+        filteredLogs = filteredLogs.filter(l => l.date >= monthStart && l.date <= todayStr);
+        document.getElementById('history-period-label').innerText = '今月の勉強時間';
+      } else {
+        document.getElementById('history-period-label').innerText = '全期間の総勉強時間';
+      }
+
+      if (filterSub !== 'all') filteredLogs = filteredLogs.filter(l => l.subjectId === filterSub);
+      if (searchQuery) filteredLogs = filteredLogs.filter(l => (l.note || '').toLowerCase().includes(searchQuery));
+
+      const periodMins = filteredLogs.reduce((sum, l) => sum + l.minutes, 0);
+      document.getElementById('history-period-time').innerText = formatMinutes(periodMins);
+      document.getElementById('history-period-count').innerText = `${filteredLogs.length}回`;
+
+      if (filteredLogs.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      filteredLogs.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id.localeCompare(a.id)).forEach(log => {
+        const subject = subjects.find(s => s.id === log.subjectId) || { name: '未分類', color: '#94a3b8' };
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/80 transition";
+        tr.innerHTML = `
+          <td class="py-4 px-6 font-mono text-xs text-slate-500">${log.date}</td>
+          <td class="py-4 px-6"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium" style="background-color: ${subject.color}15; color: ${subject.color}"><span class="w-2 h-2 rounded-full" style="background-color: ${subject.color}"></span>${subject.name}</span></td>
+          <td class="py-4 px-6 font-semibold text-slate-800">${formatMinutes(log.minutes)}</td>
+          <td class="py-4 px-6 text-slate-500 max-w-xs truncate">${log.note || '-'}</td>
+          <td class="py-4 px-6 text-right"><button onclick="deleteLog('${log.id}')" class="text-slate-400 hover:text-rose-500 p-1.5 hover:bg-rose-50 rounded-lg transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    function deleteLog(id) {
+      logs = logs.filter(l => l.id !== id);
+      saveLogs();
+      renderHistoryTable();
+      updateDashboardData();
+      showToast('学習記録を削除しました');
+    }
+
+    function exportBackupData() {
+      const backupData = {
+        version: 1,
+        date: getTodayString(),
+        subjects: subjects,
+        logs: logs,
+        todos: todos,
+        problemLogs: problemLogs,
+        dailyGoal: dailyGoal,
+        timeSchedules: window.timeSchedules,
+        customScheduleTasks: window.customScheduleTasks,
+        schedulePresets: window.schedulePresets
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `study_tracker_backup_${getTodayString()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('セーブデータを書き出しました！');
+    }
+
+    function importBackupData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data && data.subjects && data.logs) {
+            subjects = data.subjects;
+            logs = data.logs;
+            todos = data.todos || [];
+            problemLogs = data.problemLogs || [];
+            dailyGoal = data.dailyGoal || 4.0;
+            window.timeSchedules = data.timeSchedules || [];
+            window.customScheduleTasks = data.customScheduleTasks || [];
+            window.schedulePresets = data.schedulePresets || {};
+
+            saveSubjects();
+            saveLogs();
+            saveTodos();
+            localStorage.setItem('st_problem_logs', JSON.stringify(problemLogs));
+            localStorage.setItem('st_goal', dailyGoal);
+            localStorage.setItem('st_time_schedules', JSON.stringify(window.timeSchedules));
+            localStorage.setItem('st_custom_sched_tasks', JSON.stringify(window.customScheduleTasks));
+            localStorage.setItem('st_sched_presets', JSON.stringify(window.schedulePresets));
+            if (typeof notifyDataChanged === 'function') notifyDataChanged();
+
+            renderSubjectOptions();
+            renderSubjectList();
+            updateDashboardData();
+            refreshActiveTodoView();
+            renderProblemHistory();
+            renderCustomScheduleTasksList();
+            renderSchedulePresetsList();
+            showToast('データを正常に読み込みました！');
+          } else {
+            showToast('無効なファイル形式です');
+          }
+        } catch (err) {
+          showToast('ファイルの読み込みに失敗しました');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function renderSubjectOptions() {
+      const optionsHtml = subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      ['manual-subject', 'prob-subject-select', 'todo-subject-select', 'edit-todo-subject', 'modal-todo-subject'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = optionsHtml;
+      });
+      const timerEl = document.getElementById('timer-subject-select');
+      if (timerEl) {
+        timerEl.innerHTML = optionsHtml + '<option value="break">☕ 休憩</option>';
+      }
+    }
+
+    function renderSubjectList() {
+      const container = document.getElementById('subject-list');
+      if (!container) return;
+      container.innerHTML = '';
+      subjects.forEach(sub => {
+        const card = document.createElement('div');
+        card.className = "flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl";
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-4 h-4 rounded-full" style="background-color: ${sub.color}"></div>
+            <span class="font-medium text-slate-800 text-sm">${sub.name}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="editSubject('${sub.id}')" class="text-slate-400 hover:text-indigo-600 p-1.5 hover:bg-indigo-50 rounded-lg transition" title="編集"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+            <button onclick="deleteSubject('${sub.id}')" class="text-slate-400 hover:text-rose-500 p-1.5 hover:bg-rose-50 rounded-lg transition" title="削除"><i data-lucide="trash" class="w-4 h-4"></i></button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function editSubject(id) {
+      const sub = subjects.find(s => s.id === id);
+      if (!sub) return;
+      document.getElementById('edit-subject-id').value = sub.id;
+      document.getElementById('edit-subject-name').value = sub.name;
+      document.getElementById('edit-subject-color').value = sub.color;
+      document.getElementById('edit-subject-modal').classList.add('hidden');
+    }
+
+    function closeEditSubjectModal() {
+      document.getElementById('edit-subject-modal').classList.add('hidden');
+    }
+
+    function handleEditSubjectSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('edit-subject-id').value;
+      const sub = subjects.find(s => s.id === id);
+      if (sub) {
+        sub.name = document.getElementById('edit-subject-name').value.trim();
+        sub.color = document.getElementById('edit-subject-color').value;
+        saveSubjects();
+        closeEditSubjectModal();
+        renderSubjectOptions();
+        renderSubjectList();
+        updateDashboardData();
+        refreshActiveTodoView();
+        renderProblemHistory();
+        showToast('科目を更新しました');
+      }
+    }
+
+    function handleAddSubject(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('subject-name-input');
+      const colorInput = document.getElementById('subject-color-input');
+      subjects.push({ id: 'sub_' + Date.now(), name: nameInput.value.trim(), color: colorInput.value });
+      saveSubjects();
+      nameInput.value = '';
+      renderSubjectOptions();
+      renderSubjectList();
+      updateDashboardData();
+      showToast('科目を作成しました');
+    }
+
+    function deleteSubject(id) {
+      if (subjects.length <= 1) { showToast('少なくとも1つの科目は必要です'); return; }
+      subjects = subjects.filter(s => s.id !== id);
+      saveSubjects();
+      renderSubjectOptions();
+      renderSubjectList();
+      updateDashboardData();
+      showToast('科目を削除しました');
+    }
+
+    function handleGoalSubmit(e) {
+      e.preventDefault();
+      const val = parseFloat(document.getElementById('goal-input').value);
+      if (val > 0) { 
+        dailyGoal = val; 
+        localStorage.setItem('st_goal', dailyGoal); 
+        if (typeof notifyDataChanged === 'function') notifyDataChanged();
+        updateDashboardData(); 
+        showToast('目標時間を更新しました'); 
+      }
+    }
+
+    function saveLogs() { 
+      localStorage.setItem('st_logs', JSON.stringify(logs)); 
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+    }
+    function saveSubjects() { 
+      localStorage.setItem('st_subjects', JSON.stringify(subjects)); 
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+    }
+    function saveTodos() { 
+      localStorage.setItem('st_todos', JSON.stringify(todos)); 
+      if (typeof notifyDataChanged === 'function') notifyDataChanged();
+    }
+    function getTodayString() { return formatDateObj(new Date()); }
+    function getNDaysAgoDate(n) { const d = new Date(); d.setDate(d.getDate() - n); return formatDateObj(d); }
+    function formatDateObj(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+    function formatMinutes(mins) { return `${Math.floor(mins / 60)}h ${mins % 60}m`; }
+
+    function showToast(message) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-message').innerText = message;
+      t.classList.remove('translate-y-20', 'opacity-0');
+      t.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        t.classList.remove('translate-y-0', 'opacity-100');
+        t.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

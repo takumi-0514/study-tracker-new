@@ -1,0 +1,8 @@
+{
+  "name": "Study Timer",
+  "short_name": "Study Timer",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}
