@@ -45,6 +45,94 @@
 
       renderMainChart();
       renderSubjectChart();
+      renderWeeklyReport();
+    }
+
+    function renderWeeklyReport() {
+      const rangeLabelEl = document.getElementById('weekly-report-range-label');
+      const thisWeekEl = document.getElementById('weekly-report-this-week');
+      const lastWeekEl = document.getElementById('weekly-report-last-week');
+      const diffEl = document.getElementById('weekly-report-diff');
+      const breakdownEl = document.getElementById('weekly-report-subject-breakdown');
+      const emptyEl = document.getElementById('weekly-report-empty');
+      const warningEl = document.getElementById('weekly-report-streak-warning');
+      const warningTextEl = document.getElementById('weekly-report-streak-warning-text');
+      if (!thisWeekEl) return;
+
+      const todayStr = getTodayString();
+      const thisWeekStart = getNDaysAgoDate(6);
+      const lastWeekStart = getNDaysAgoDate(13);
+      const lastWeekEnd = getNDaysAgoDate(7);
+
+      if (rangeLabelEl) rangeLabelEl.innerText = `${thisWeekStart} 〜 ${todayStr}`;
+
+      let thisWeekMins = 0;
+      let lastWeekMins = 0;
+      const subjectMinsThisWeek = {};
+
+      logs.forEach(log => {
+        if (log.date >= thisWeekStart && log.date <= todayStr) {
+          thisWeekMins += log.minutes;
+          subjectMinsThisWeek[log.subjectId] = (subjectMinsThisWeek[log.subjectId] || 0) + log.minutes;
+        } else if (log.date >= lastWeekStart && log.date <= lastWeekEnd) {
+          lastWeekMins += log.minutes;
+        }
+      });
+
+      thisWeekEl.innerText = formatMinutes(thisWeekMins);
+      lastWeekEl.innerText = formatMinutes(lastWeekMins);
+
+      if (lastWeekMins === 0 && thisWeekMins === 0) {
+        diffEl.innerText = '-';
+        diffEl.className = 'text-xs font-semibold mt-1 text-slate-400';
+      } else if (lastWeekMins === 0) {
+        diffEl.innerText = '先週の記録なし';
+        diffEl.className = 'text-xs font-semibold mt-1 text-slate-400';
+      } else {
+        const diffPercent = Math.round(((thisWeekMins - lastWeekMins) / lastWeekMins) * 100);
+        if (diffPercent >= 0) {
+          diffEl.innerText = `▲ 先週より ${diffPercent}%多い`;
+          diffEl.className = 'text-xs font-semibold mt-1 text-emerald-600';
+        } else {
+          diffEl.innerText = `▼ 先週より ${Math.abs(diffPercent)}%少ない`;
+          diffEl.className = 'text-xs font-semibold mt-1 text-rose-500';
+        }
+      }
+
+      breakdownEl.innerHTML = '';
+      const subjectIds = Object.keys(subjectMinsThisWeek).sort((a, b) => subjectMinsThisWeek[b] - subjectMinsThisWeek[a]);
+
+      if (subjectIds.length === 0) {
+        emptyEl.classList.remove('hidden');
+      } else {
+        emptyEl.classList.add('hidden');
+        const maxMins = Math.max(...subjectIds.map(id => subjectMinsThisWeek[id]));
+        subjectIds.forEach(subId => {
+          const subject = subjects.find(s => s.id === subId) || { name: '未分類', color: '#94a3b8' };
+          const mins = subjectMinsThisWeek[subId];
+          const widthPercent = maxMins > 0 ? Math.round((mins / maxMins) * 100) : 0;
+          const row = document.createElement('div');
+          row.className = 'flex items-center gap-3 text-xs';
+          row.innerHTML = `
+            <span class="w-16 flex-shrink-0 truncate font-medium text-slate-600">${subject.name}</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+              <div class="h-full rounded-full" style="width: ${widthPercent}%; background-color: ${subject.color}"></div>
+            </div>
+            <span class="w-14 flex-shrink-0 text-right font-semibold text-slate-700">${formatMinutes(mins)}</span>
+          `;
+          breakdownEl.appendChild(row);
+        });
+      }
+
+      // ストリークが途切れそうな警告(現在ストリークが発生中で、今日まだ記録がない場合)
+      const streak = calculateStreak();
+      const hasTodayLog = logs.some(l => l.date === todayStr);
+      if (streak > 0 && !hasTodayLog) {
+        warningEl.classList.remove('hidden');
+        warningTextEl.innerText = `現在 ${streak}日連続で学習中です。今日まだ記録がありません。途切れる前に学習を記録しましょう！`;
+      } else {
+        warningEl.classList.add('hidden');
+      }
     }
 
     function calculateStreak() {
