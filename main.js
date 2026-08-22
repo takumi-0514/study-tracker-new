@@ -1,6 +1,15 @@
 // ==== 初期化 ====
 // DOMContentLoaded時にUIを初期描画する
 
+    // Service Workerを登録(通知表示・オフラインキャッシュに使用)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.warn('[SW] registration failed:', err);
+        });
+      });
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       document.getElementById('manual-date').value = getTodayString();
