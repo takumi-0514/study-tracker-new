@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>StudyTracker Pro - 勉強時間管理</title>
   
   <link rel="manifest" href="./manifest.json">
@@ -29,6 +29,11 @@
       main {
         padding-bottom: 95px !important;
       }
+    }
+    /* iPhoneのノッチ・ステータスバー分の余白をヘッダーに吸収させ、
+       本文側には余計な隙間ができないようにする */
+    header.md\:hidden {
+      padding-top: env(safe-area-inset-top, 0px);
     }
   </style>
 </head>
