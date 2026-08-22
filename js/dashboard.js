@@ -48,6 +48,18 @@
       renderWeeklyReport();
     }
 
+    function setReportPeriod(period) {
+      currentReportPeriod = period;
+      ['day', 'week', 'month'].forEach(p => {
+        const btn = document.getElementById(`report-period-${p}`);
+        if (btn) {
+          if (p === period) btn.className = "px-3 py-1 rounded-md bg-white shadow-sm text-indigo-600 font-semibold transition";
+          else btn.className = "px-3 py-1 rounded-md text-slate-600 transition";
+        }
+      });
+      renderWeeklyReport();
+    }
+
     function renderWeeklyReport() {
       const rangeLabelEl = document.getElementById('weekly-report-range-label');
       const thisWeekEl = document.getElementById('weekly-report-this-week');
@@ -57,59 +69,97 @@
       const emptyEl = document.getElementById('weekly-report-empty');
       const warningEl = document.getElementById('weekly-report-streak-warning');
       const warningTextEl = document.getElementById('weekly-report-streak-warning-text');
+      const currentLabelEl = document.getElementById('report-current-label');
+      const previousLabelEl = document.getElementById('report-previous-label');
+      const breakdownLabelEl = document.getElementById('report-breakdown-label');
       if (!thisWeekEl) return;
 
+      const period = currentReportPeriod || 'week';
       const todayStr = getTodayString();
-      const thisWeekStart = getNDaysAgoDate(6);
-      const lastWeekStart = getNDaysAgoDate(13);
-      const lastWeekEnd = getNDaysAgoDate(7);
 
-      if (rangeLabelEl) rangeLabelEl.innerText = `${thisWeekStart} 〜 ${todayStr}`;
+      let currentStart, currentEnd, previousStart, previousEnd;
+      let currentLabel, previousLabel, breakdownLabel;
 
-      let thisWeekMins = 0;
-      let lastWeekMins = 0;
-      const subjectMinsThisWeek = {};
+      if (period === 'day') {
+        currentStart = currentEnd = todayStr;
+        previousStart = previousEnd = getNDaysAgoDate(1);
+        currentLabel = '今日の合計';
+        previousLabel = '昨日の合計';
+        breakdownLabel = '科目別内訳(今日)';
+      } else if (period === 'month') {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        currentStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        currentEnd = todayStr;
+        const prevMonthDate = new Date(year, month - 1, 1);
+        const prevYear = prevMonthDate.getFullYear();
+        const prevMonth = prevMonthDate.getMonth();
+        const daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+        previousStart = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
+        previousEnd = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(daysInPrevMonth).padStart(2, '0')}`;
+        currentLabel = '今月の合計';
+        previousLabel = '先月の合計';
+        breakdownLabel = '科目別内訳(今月)';
+      } else {
+        currentStart = getNDaysAgoDate(6);
+        currentEnd = todayStr;
+        previousStart = getNDaysAgoDate(13);
+        previousEnd = getNDaysAgoDate(7);
+        currentLabel = '今週の合計';
+        previousLabel = '先週の合計';
+        breakdownLabel = '科目別内訳(今週)';
+      }
+
+      if (rangeLabelEl) rangeLabelEl.innerText = `${currentStart} 〜 ${currentEnd}`;
+      if (currentLabelEl) currentLabelEl.innerText = currentLabel;
+      if (previousLabelEl) previousLabelEl.innerText = previousLabel;
+      if (breakdownLabelEl) breakdownLabelEl.innerText = breakdownLabel;
+
+      let currentMins = 0;
+      let previousMins = 0;
+      const subjectMinsCurrent = {};
 
       logs.forEach(log => {
-        if (log.date >= thisWeekStart && log.date <= todayStr) {
-          thisWeekMins += log.minutes;
-          subjectMinsThisWeek[log.subjectId] = (subjectMinsThisWeek[log.subjectId] || 0) + log.minutes;
-        } else if (log.date >= lastWeekStart && log.date <= lastWeekEnd) {
-          lastWeekMins += log.minutes;
+        if (log.date >= currentStart && log.date <= currentEnd) {
+          currentMins += log.minutes;
+          subjectMinsCurrent[log.subjectId] = (subjectMinsCurrent[log.subjectId] || 0) + log.minutes;
+        } else if (log.date >= previousStart && log.date <= previousEnd) {
+          previousMins += log.minutes;
         }
       });
 
-      thisWeekEl.innerText = formatMinutes(thisWeekMins);
-      lastWeekEl.innerText = formatMinutes(lastWeekMins);
+      thisWeekEl.innerText = formatMinutes(currentMins);
+      lastWeekEl.innerText = formatMinutes(previousMins);
 
-      if (lastWeekMins === 0 && thisWeekMins === 0) {
+      if (previousMins === 0 && currentMins === 0) {
         diffEl.innerText = '-';
         diffEl.className = 'text-xs font-semibold mt-1 text-slate-400';
-      } else if (lastWeekMins === 0) {
-        diffEl.innerText = '先週の記録なし';
+      } else if (previousMins === 0) {
+        diffEl.innerText = `${previousLabel.replace('の合計', '')}の記録なし`;
         diffEl.className = 'text-xs font-semibold mt-1 text-slate-400';
       } else {
-        const diffPercent = Math.round(((thisWeekMins - lastWeekMins) / lastWeekMins) * 100);
+        const diffPercent = Math.round(((currentMins - previousMins) / previousMins) * 100);
         if (diffPercent >= 0) {
-          diffEl.innerText = `▲ 先週より ${diffPercent}%多い`;
+          diffEl.innerText = `▲ 前${period === 'day' ? '日' : period === 'month' ? '月' : '週'}より ${diffPercent}%多い`;
           diffEl.className = 'text-xs font-semibold mt-1 text-emerald-600';
         } else {
-          diffEl.innerText = `▼ 先週より ${Math.abs(diffPercent)}%少ない`;
+          diffEl.innerText = `▼ 前${period === 'day' ? '日' : period === 'month' ? '月' : '週'}より ${Math.abs(diffPercent)}%少ない`;
           diffEl.className = 'text-xs font-semibold mt-1 text-rose-500';
         }
       }
 
       breakdownEl.innerHTML = '';
-      const subjectIds = Object.keys(subjectMinsThisWeek).sort((a, b) => subjectMinsThisWeek[b] - subjectMinsThisWeek[a]);
+      const subjectIds = Object.keys(subjectMinsCurrent).sort((a, b) => subjectMinsCurrent[b] - subjectMinsCurrent[a]);
 
       if (subjectIds.length === 0) {
         emptyEl.classList.remove('hidden');
       } else {
         emptyEl.classList.add('hidden');
-        const maxMins = Math.max(...subjectIds.map(id => subjectMinsThisWeek[id]));
+        const maxMins = Math.max(...subjectIds.map(id => subjectMinsCurrent[id]));
         subjectIds.forEach(subId => {
           const subject = subjects.find(s => s.id === subId) || { name: '未分類', color: '#94a3b8' };
-          const mins = subjectMinsThisWeek[subId];
+          const mins = subjectMinsCurrent[subId];
           const widthPercent = maxMins > 0 ? Math.round((mins / maxMins) * 100) : 0;
           const row = document.createElement('div');
           row.className = 'flex items-center gap-3 text-xs';
