@@ -656,6 +656,39 @@
           </div>
         </div>
       </div>
+
+      <!-- Weekly Report Card -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="file-text" class="w-5 h-5 text-indigo-500"></i> 週次レポート
+          </h3>
+          <span class="text-xs text-slate-400" id="weekly-report-range-label"></span>
+        </div>
+
+        <div id="weekly-report-streak-warning" class="hidden mb-4 bg-amber-50 border border-amber-200 text-amber-800 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
+          <i data-lucide="alarm-clock" class="w-4 h-4 flex-shrink-0"></i>
+          <span id="weekly-report-streak-warning-text"></span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          <div class="bg-slate-50 rounded-xl p-4">
+            <div class="text-xs font-medium text-slate-500 mb-1">今週の合計</div>
+            <div class="text-2xl font-bold text-slate-800" id="weekly-report-this-week">0h 0m</div>
+            <div class="text-xs font-semibold mt-1" id="weekly-report-diff">-</div>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-4">
+            <div class="text-xs font-medium text-slate-500 mb-1">先週の合計</div>
+            <div class="text-2xl font-bold text-slate-500" id="weekly-report-last-week">0h 0m</div>
+          </div>
+        </div>
+
+        <div class="text-xs font-semibold text-slate-600 mb-2">科目別内訳(今週)</div>
+        <div id="weekly-report-subject-breakdown" class="space-y-2"></div>
+        <div id="weekly-report-empty" class="hidden text-center text-slate-400 text-sm py-6">
+          今週はまだ学習記録がありません。
+        </div>
+      </div>
     </section>
 
     <!-- TAB 4: HISTORY -->
