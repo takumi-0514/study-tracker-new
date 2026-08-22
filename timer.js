@@ -158,9 +158,43 @@
       } catch (err) {
         console.warn("[AUDIO] unlock exception:", err);
       }
+
+      requestNotificationPermission();
     }
 
-    function playAlarmSound() {
+    // ---- 通知(タブ/アプリを開いたままの間、他のタブ・他アプリを見ていても表示) ----
+    function requestNotificationPermission() {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+
+    function showTimerNotification(title, body) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+      const options = {
+        body,
+        icon: './study_timer.png',
+        badge: './study_timer.png',
+        tag: 'study-timer-alarm',
+        renotify: true
+      };
+
+      if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(title, options);
+        }).catch(() => {
+          try { new Notification(title, options); } catch (_) {}
+        });
+      } else {
+        try { new Notification(title, options); } catch (_) {}
+      }
+    }
+
+    function playAlarmSound(notificationMessage = 'タイマーが終了しました！') {
+      showTimerNotification('StudyTracker Pro', notificationMessage);
+
       const audio = document.getElementById('alarm-sound');
       if (!audio) {
         console.warn("[AUDIO] #alarm-sound が見つかりません");
@@ -269,28 +303,38 @@
       document.getElementById('floating-timer').classList.remove('hidden');
       document.getElementById('lap-panel').classList.remove('hidden');
 
-      timerInterval = setInterval(() => {
+      lastTickTimestamp = Date.now();
+      timerInterval = setInterval(timerTick, 1000);
+    }
+
+    // バックグラウンドでsetIntervalが間引かれても、実時間との差分から
+    // 経過秒数をまとめて反映することでズレを補正する。
+    function timerTick() {
+        const now = Date.now();
+        const elapsedSec = Math.max(1, Math.round((now - lastTickTimestamp) / 1000));
+        lastTickTimestamp = now;
+
         const currentSubId = document.getElementById('timer-subject-select').value;
 
         if (timerMode === 'stopwatch') {
-          timerSeconds++;
+          timerSeconds += elapsedSec;
           if (currentSubId !== 'break') {
-            subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + 1;
+            subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + elapsedSec;
           }
         } else if (timerMode === 'timer' || timerMode === 'alarm') {
           if (timerMode === 'alarm' && alarmTargetTimestamp) {
             const left = Math.max(0, Math.floor((alarmTargetTimestamp - Date.now()) / 1000));
             timerSeconds = left;
           } else {
-            if (timerSeconds > 0) timerSeconds--;
+            timerSeconds = Math.max(0, timerSeconds - elapsedSec);
           }
           
           if (currentSubId !== 'break') {
-            subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + 1;
+            subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + elapsedSec;
           }
 
           if (timerSeconds <= 0) {
-            playAlarmSound();
+            playAlarmSound('アラーム時刻になりました！自動で記録を保存します');
             pauseTimer();
             showToast('アラーム時刻になりました！自動で記録を保存します');
             saveTimerSessionAuto();
@@ -298,16 +342,17 @@
           }
         } else {
           if (timerSeconds > 0) {
-            timerSeconds--;
+            const prevSeconds = timerSeconds;
+            timerSeconds = Math.max(0, timerSeconds - elapsedSec);
             if (loopState === 'work' && currentSubId !== 'break') {
-              subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + 1;
+              subjectElapsedSeconds[currentSubId] = (subjectElapsedSeconds[currentSubId] || 0) + (prevSeconds - timerSeconds);
             }
           }
           if (timerSeconds === 0) {
-            playAlarmSound();
             if (loopState === 'work') {
               saveTimerSessionAuto(false);
               if (pomoBreakMin > 0) {
+                playAlarmSound('集中タイム終了！休憩に入ります。');
                 loopState = 'break';
                 timerSeconds = pomoBreakMin * 60;
                 document.getElementById('timer-loop-status').innerText = `☕ 休憩タイム (${currentSet} / ${totalSets}セット)`;
@@ -320,10 +365,12 @@
               currentSet++;
               loopState = 'work';
               timerSeconds = pomoWorkMin * 60;
+              playAlarmSound(`セット ${currentSet} を開始します！`);
               document.getElementById('timer-loop-status').innerText = `🔥 集中タイム (${currentSet} / ${totalSets}セット)`;
               showToast(`セット ${currentSet} を開始します！`);
               updateTimerDisplay();
             } else {
+              playAlarmSound('すべてのセットが完了しました！お疲れ様でした！');
               pauseTimer();
               showToast('すべてのセットが完了しました！お疲れ様でした！');
             }
@@ -333,8 +380,15 @@
         updateTimerDisplay();
         renderLapList();
         updateSaveButtonState();
-      }, 1000);
     }
+
+    // タブ/アプリが再びアクティブになった瞬間に、setIntervalの間引きで
+    // 生じたズレを即座に補正し、見逃したアラームがあれば発火させる。
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && isTimerRunning) {
+        timerTick();
+      }
+    });
 
     function pauseTimer() {
       if (!isTimerRunning) return;
