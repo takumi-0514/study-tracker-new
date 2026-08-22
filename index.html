@@ -696,6 +696,18 @@
           この期間はまだ学習記録がありません。
         </div>
       </div>
+
+      <!-- Study Trends Card -->
+      <div id="trends-report-card" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <i data-lucide="lightbulb" class="w-5 h-5 text-indigo-500"></i> 学習傾向
+        </h3>
+
+        <div id="trends-insight-list" class="space-y-2 mb-5"></div>
+
+        <div class="text-xs font-semibold text-slate-600 mb-2">曜日別の平均学習時間</div>
+        <div id="trends-weekday-breakdown" class="grid grid-cols-7 gap-1.5 items-end h-28"></div>
+      </div>
     </section>
 
     <!-- TAB 4: HISTORY -->
