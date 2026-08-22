@@ -46,6 +46,7 @@
       renderMainChart();
       renderSubjectChart();
       renderWeeklyReport();
+      if (typeof renderSubjectList === 'function') renderSubjectList();
     }
 
     function setReportPeriod(period) {
