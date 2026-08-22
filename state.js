@@ -22,6 +22,7 @@
     let timerInterval = null;
     let isTimerRunning = false;
     let hasTimerStartedEver = false;
+    let lastTickTimestamp = null;
 
     let pomoWorkMin = 25;
     let pomoBreakMin = 5;
