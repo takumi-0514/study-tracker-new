@@ -46,7 +46,99 @@
       renderMainChart();
       renderSubjectChart();
       renderWeeklyReport();
+      renderTrendsReport();
       if (typeof renderSubjectList === 'function') renderSubjectList();
+    }
+
+    function renderTrendsReport() {
+      const cardEl = document.getElementById('trends-report-card');
+      const insightListEl = document.getElementById('trends-insight-list');
+      const weekdayEl = document.getElementById('trends-weekday-breakdown');
+      if (!cardEl) return;
+
+      if (logs.length === 0) {
+        cardEl.classList.add('hidden');
+        return;
+      }
+      cardEl.classList.remove('hidden');
+
+      // ---- 曜日別の平均学習時間 ----
+      const weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+      const weekdayTotals = [0, 0, 0, 0, 0, 0, 0];
+      const weekdayOccurrences = [0, 0, 0, 0, 0, 0, 0];
+
+      const sortedDates = [...new Set(logs.map(l => l.date))].sort();
+      const firstDate = new Date(sortedDates[0] + 'T00:00:00');
+      const lastDate = new Date(getTodayString() + 'T00:00:00');
+
+      const cursor = new Date(firstDate);
+      while (cursor <= lastDate) {
+        weekdayOccurrences[cursor.getDay()]++;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      logs.forEach(log => {
+        const d = new Date(log.date + 'T00:00:00');
+        weekdayTotals[d.getDay()] += log.minutes;
+      });
+
+      const weekdayAverages = weekdayTotals.map((total, i) => weekdayOccurrences[i] > 0 ? total / weekdayOccurrences[i] : 0);
+      const maxAvg = Math.max(...weekdayAverages, 1);
+      const maxAvgIdx = weekdayAverages.indexOf(Math.max(...weekdayAverages));
+      let minAvgIdx = -1;
+      weekdayAverages.forEach((v, i) => {
+        if (weekdayOccurrences[i] > 0 && (minAvgIdx === -1 || v < weekdayAverages[minAvgIdx])) minAvgIdx = i;
+      });
+
+      weekdayEl.innerHTML = '';
+      weekdayLabels.forEach((label, i) => {
+        const avg = weekdayAverages[i];
+        const heightPercent = Math.max(4, Math.round((avg / maxAvg) * 100));
+        const isMax = i === maxAvgIdx && avg > 0;
+        const isMin = i === minAvgIdx && avg > 0 && minAvgIdx !== maxAvgIdx;
+        const col = document.createElement('div');
+        col.className = 'flex flex-col items-center justify-end h-full gap-1';
+        col.innerHTML = `
+          <span class="text-[9px] font-semibold text-slate-500">${avg > 0 ? Math.round(avg) + 'm' : ''}</span>
+          <div class="w-full rounded-t-md ${isMax ? 'bg-emerald-500' : isMin ? 'bg-rose-400' : 'bg-indigo-300'}" style="height: ${heightPercent}%; min-height: 4px;"></div>
+          <span class="text-[10px] font-semibold ${label === '日' ? 'text-rose-500' : label === '土' ? 'text-indigo-500' : 'text-slate-500'}">${label}</span>
+        `;
+        weekdayEl.appendChild(col);
+      });
+
+      // ---- 自動検知インサイト ----
+      const insights = [];
+
+      if (maxAvgIdx !== -1 && minAvgIdx !== -1 && maxAvgIdx !== minAvgIdx) {
+        insights.push(`📊 ${weekdayLabels[maxAvgIdx]}曜日は平均${formatMinutes(Math.round(weekdayAverages[maxAvgIdx]))}と最も学習が多く、${weekdayLabels[minAvgIdx]}曜日は平均${formatMinutes(Math.round(weekdayAverages[minAvgIdx]))}と少なめの傾向です。`);
+      }
+
+      const todayStr = getTodayString();
+      const weekStart = getNDaysAgoDate(6);
+      const subjectMinsThisWeek = {};
+      let weekTotalMins = 0;
+      logs.forEach(l => {
+        if (l.date >= weekStart && l.date <= todayStr) {
+          subjectMinsThisWeek[l.subjectId] = (subjectMinsThisWeek[l.subjectId] || 0) + l.minutes;
+          weekTotalMins += l.minutes;
+        }
+      });
+      if (weekTotalMins > 0) {
+        const topSubId = Object.keys(subjectMinsThisWeek).sort((a, b) => subjectMinsThisWeek[b] - subjectMinsThisWeek[a])[0];
+        const topSubject = subjects.find(s => s.id === topSubId);
+        const topShare = Math.round((subjectMinsThisWeek[topSubId] / weekTotalMins) * 100);
+        if (topSubject && topShare >= 50) {
+          insights.push(`⚖️ 今週は「${topSubject.name}」の割合が${topShare}%と多めです。他の科目とのバランスも意識してみましょう。`);
+        }
+      }
+
+      if (insights.length === 0) {
+        insights.push('まだ十分なデータがありません。学習記録が増えると、ここに傾向が表示されます。');
+      }
+
+      insightListEl.innerHTML = insights.map(text => `
+        <div class="text-xs text-slate-700 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5">${text}</div>
+      `).join('');
     }
 
     function setReportPeriod(period) {
