@@ -151,28 +151,63 @@
       }
 
       breakdownEl.innerHTML = '';
-      const subjectIds = Object.keys(subjectMinsCurrent).sort((a, b) => subjectMinsCurrent[b] - subjectMinsCurrent[a]);
+
+      // 週間目標が設定されている科目は、今週まだ記録が0分でも一覧に出す
+      let subjectIds = Object.keys(subjectMinsCurrent);
+      if (period === 'week') {
+        subjects.forEach(s => {
+          if (s.weeklyGoalMinutes > 0 && !subjectIds.includes(s.id)) subjectIds.push(s.id);
+        });
+      }
+      subjectIds.sort((a, b) => (subjectMinsCurrent[b] || 0) - (subjectMinsCurrent[a] || 0));
 
       if (subjectIds.length === 0) {
         emptyEl.classList.remove('hidden');
       } else {
         emptyEl.classList.add('hidden');
-        const maxMins = Math.max(...subjectIds.map(id => subjectMinsCurrent[id]));
+        const maxMins = Math.max(1, ...subjectIds.map(id => subjectMinsCurrent[id] || 0));
+        const unmetGoalNames = [];
+
         subjectIds.forEach(subId => {
           const subject = subjects.find(s => s.id === subId) || { name: '未分類', color: '#94a3b8' };
-          const mins = subjectMinsCurrent[subId];
-          const widthPercent = maxMins > 0 ? Math.round((mins / maxMins) * 100) : 0;
+          const mins = subjectMinsCurrent[subId] || 0;
           const row = document.createElement('div');
-          row.className = 'flex items-center gap-3 text-xs';
-          row.innerHTML = `
-            <span class="w-16 flex-shrink-0 truncate font-medium text-slate-600">${subject.name}</span>
-            <div class="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
-              <div class="h-full rounded-full" style="width: ${widthPercent}%; background-color: ${subject.color}"></div>
-            </div>
-            <span class="w-14 flex-shrink-0 text-right font-semibold text-slate-700">${formatMinutes(mins)}</span>
-          `;
+
+          if (period === 'week' && subject.weeklyGoalMinutes > 0) {
+            const goalPercent = Math.min(100, Math.round((mins / subject.weeklyGoalMinutes) * 100));
+            const achieved = mins >= subject.weeklyGoalMinutes;
+            if (!achieved) unmetGoalNames.push(subject.name);
+            const barColor = achieved ? '#10b981' : (goalPercent < 50 ? '#f43f5e' : subject.color);
+            row.className = 'flex items-center gap-3 text-xs';
+            row.innerHTML = `
+              <span class="w-16 flex-shrink-0 truncate font-medium text-slate-600">${subject.name}</span>
+              <div class="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div class="h-full rounded-full transition-all" style="width: ${goalPercent}%; background-color: ${barColor}"></div>
+              </div>
+              <span class="w-28 flex-shrink-0 text-right font-semibold ${achieved ? 'text-emerald-600' : 'text-slate-700'}">
+                ${achieved ? '✅ 達成' : `${formatMinutes(mins)} / ${formatMinutes(subject.weeklyGoalMinutes)}`}
+              </span>
+            `;
+          } else {
+            const widthPercent = Math.round((mins / maxMins) * 100);
+            row.className = 'flex items-center gap-3 text-xs';
+            row.innerHTML = `
+              <span class="w-16 flex-shrink-0 truncate font-medium text-slate-600">${subject.name}</span>
+              <div class="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div class="h-full rounded-full" style="width: ${widthPercent}%; background-color: ${subject.color}"></div>
+              </div>
+              <span class="w-14 flex-shrink-0 text-right font-semibold text-slate-700">${formatMinutes(mins)}</span>
+            `;
+          }
           breakdownEl.appendChild(row);
         });
+
+        if (period === 'week' && unmetGoalNames.length > 0) {
+          const notice = document.createElement('div');
+          notice.className = 'text-[11px] text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mb-3';
+          notice.innerText = `⚠️ 目標未達成: ${unmetGoalNames.join('、')}`;
+          breakdownEl.insertBefore(notice, breakdownEl.firstChild);
+        }
       }
 
       // ストリークが途切れそうな警告(現在ストリークが発生中で、今日まだ記録がない場合)
