@@ -14,6 +14,7 @@
     let historyPeriodFilter = 'all';
     let calendarDate = new Date();
     let currentChartRange = '7days';
+    let currentReportPeriod = 'week';
 
     let timerMode = 'stopwatch';
     let timerSeconds = 0;
