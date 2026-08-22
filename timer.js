@@ -164,14 +164,32 @@
 
     // ---- 通知(タブ/アプリを開いたままの間、他のタブ・他アプリを見ていても表示) ----
     function requestNotificationPermission() {
-      if (!('Notification' in window)) return;
+      if (!('Notification' in window)) {
+        console.warn('[NOTIFY] このブラウザはNotification APIに対応していません');
+        return;
+      }
+      console.log('[NOTIFY] 現在の許可状態:', Notification.permission);
       if (Notification.permission === 'default') {
-        Notification.requestPermission().catch(() => {});
+        Notification.requestPermission().then(result => {
+          console.log('[NOTIFY] リクエスト結果:', result);
+        }).catch(err => console.warn('[NOTIFY] リクエスト失敗:', err));
       }
     }
 
     function showTimerNotification(title, body) {
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      console.log('[NOTIFY] showTimerNotification called', {
+        supported: 'Notification' in window,
+        permission: ('Notification' in window) ? Notification.permission : 'unsupported'
+      });
+
+      if (!('Notification' in window)) {
+        console.warn('[NOTIFY] このブラウザは通知に対応していません');
+        return;
+      }
+      if (Notification.permission !== 'granted') {
+        console.warn('[NOTIFY] 通知許可がありません:', Notification.permission);
+        return;
+      }
 
       const options = {
         body,
@@ -181,14 +199,30 @@
         renotify: true
       };
 
-      if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.showNotification(title, options);
-        }).catch(() => {
-          try { new Notification(title, options); } catch (_) {}
-        });
+      const fallback = () => {
+        try {
+          new Notification(title, options);
+          console.log('[NOTIFY] plain Notification表示');
+        } catch (err) {
+          console.warn('[NOTIFY] plain Notification失敗:', err);
+        }
+      };
+
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        // SWがすでにこのページを制御している場合のみreadyを待つ(そうでなければ永久に保留される可能性がある)
+        const readyPromise = navigator.serviceWorker.ready;
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('SW ready timeout')), 1500));
+        Promise.race([readyPromise, timeoutPromise])
+          .then(reg => {
+            reg.showNotification(title, options);
+            console.log('[NOTIFY] SW経由で表示');
+          })
+          .catch(err => {
+            console.warn('[NOTIFY] SW経由失敗、フォールバック:', err);
+            fallback();
+          });
       } else {
-        try { new Notification(title, options); } catch (_) {}
+        fallback();
       }
     }
 
@@ -313,6 +347,9 @@
         const now = Date.now();
         const elapsedSec = Math.max(1, Math.round((now - lastTickTimestamp) / 1000));
         lastTickTimestamp = now;
+        if (elapsedSec > 1) {
+          console.log(`[TIMER] ${elapsedSec}秒分まとめて補正しました`);
+        }
 
         const currentSubId = document.getElementById('timer-subject-select').value;
 
