@@ -29,7 +29,7 @@
     }
 
     function switchTab(tabId) {
-      ['timer', 'problem', 'todos', 'dashboard', 'history', 'subjects'].forEach(tab => {
+      ['timer', 'problem', 'todos', 'dashboard', 'history', 'subjects', 'achievements'].forEach(tab => {
         const section = document.getElementById(`tab-${tab}`);
         const btn = document.getElementById(`nav-${tab}`);
         const mobBtn = document.getElementById(`mob-nav-${tab}`);
@@ -59,6 +59,8 @@
 
       if (tabId === 'dashboard') {
         updateDashboardData();
+      } else if (tabId === 'achievements') {
+        renderAchievementsPage();
       } else if (tabId === 'history') {
         renderHistoryTable();
       } else if (tabId === 'problem') {
