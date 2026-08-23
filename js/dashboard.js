@@ -13,6 +13,59 @@
       renderMainChart();
     }
 
+    // ---- 目標達成ストリーク ----
+
+    function calculateGoalStreak() {
+      if (logs.length === 0) return 0;
+      const dailyTotals = {};
+      logs.forEach(l => { dailyTotals[l.date] = (dailyTotals[l.date] || 0) + l.minutes; });
+      const goalMins = dailyGoal * 60;
+      const todayStr = getTodayString();
+      const yesterdayStr = getNDaysAgoDate(1);
+
+      const achievedToday = (dailyTotals[todayStr] || 0) >= goalMins;
+      const achievedYesterday = (dailyTotals[yesterdayStr] || 0) >= goalMins;
+      if (!achievedToday && !achievedYesterday) return 0;
+
+      let streak = 0;
+      let checkDate = new Date();
+      if (!achievedToday) checkDate.setDate(checkDate.getDate() - 1);
+
+      while (true) {
+        const dateStr = formatDateObj(checkDate);
+        if ((dailyTotals[dateStr] || 0) >= goalMins) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      return streak;
+    }
+
+    function sumSubjectMinsInWeekWindow(subjectId, weekOffset) {
+      const start = getNDaysAgoDate(6 + weekOffset * 7);
+      const end = getNDaysAgoDate(weekOffset * 7);
+      return logs.filter(l => l.subjectId === subjectId && l.date >= start && l.date <= end)
+                  .reduce((sum, l) => sum + l.minutes, 0);
+    }
+
+    function calculateSubjectWeekStreak(subjectId) {
+      const subject = subjects.find(s => s.id === subjectId);
+      if (!subject || !(subject.weeklyGoalMinutes > 0)) return 0;
+      const goal = subject.weeklyGoalMinutes;
+
+      // 進行中の今週がまだ未達成でも、週が終わっていないのでストリークは途切れさせず先週から数える
+      let weekOffset = sumSubjectMinsInWeekWindow(subjectId, 0) >= goal ? 0 : 1;
+
+      let streak = 0;
+      while (sumSubjectMinsInWeekWindow(subjectId, weekOffset) >= goal) {
+        streak++;
+        weekOffset++;
+      }
+      return streak;
+    }
+
     function updateDashboardData() {
       const todayStr = getTodayString();
       let todayMins = 0;
@@ -42,6 +95,7 @@
       if (mobGoalEl) mobGoalEl.innerText = `目標 ${dailyGoal}h (${percent}%)`;
 
       document.getElementById('kpi-streak').innerText = `${calculateStreak()}日`;
+      document.getElementById('kpi-goal-streak').innerText = `${calculateGoalStreak()}日`;
 
       renderMainChart();
       renderSubjectChart();
