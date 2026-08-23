@@ -44,4 +44,7 @@
       if (probInput) {
         probInput.addEventListener('input', checkProblemComparison);
       }
+
+      // 既存データで既に条件を満たしている実績がないか、起動時に一度チェックする
+      if (typeof checkAchievements === 'function') checkAchievements();
     });
