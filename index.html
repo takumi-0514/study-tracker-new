@@ -77,6 +77,10 @@
           <i data-lucide="folder-kanban" class="w-5 h-5"></i>
           <span>科目・目標設定</span>
         </button>
+        <button onclick="switchTab('achievements')" id="nav-achievements" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+          <i data-lucide="trophy" class="w-5 h-5"></i>
+          <span>実績</span>
+        </button>
       </nav>
     </div>
 
@@ -878,6 +882,24 @@
       </div>
     </section>
 
+    <!-- TAB 6: ACHIEVEMENTS -->
+    <section id="tab-achievements" class="space-y-6 hidden">
+      <header class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900">実績</h2>
+          <p class="text-slate-500 text-sm">学習の積み重ねを実績として記録します</p>
+        </div>
+        <div class="bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-sm flex items-center gap-2">
+          <i data-lucide="trophy" class="w-5 h-5 text-amber-500"></i>
+          <span class="text-sm font-bold text-slate-800" id="achievements-count">0 / 0 解除</span>
+        </div>
+      </header>
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+        <div id="achievements-list"></div>
+      </div>
+    </section>
+
   </main>
 
   <!-- Mobile Bottom Navigation Bar -->
@@ -905,6 +927,10 @@
     <button onclick="switchTab('subjects')" id="mob-nav-subjects" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
       <i data-lucide="folder-kanban" class="w-5 h-5"></i>
       <span>設定</span>
+    </button>
+    <button onclick="switchTab('achievements')" id="mob-nav-achievements" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
+      <i data-lucide="trophy" class="w-5 h-5"></i>
+      <span>実績</span>
     </button>
   </nav>
 
@@ -1098,6 +1124,7 @@
   <script src="./js/todos.js"></script>
   <script src="./js/dashboard.js"></script>
   <script src="./js/subjects.js"></script>
+  <script src="./js/achievements.js"></script>
   <script src="./js/main.js"></script>
 </body>
 </html>
