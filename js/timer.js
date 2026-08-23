@@ -332,6 +332,12 @@
       hasTimerStartedEver = true;
       updateSaveButtonState();
 
+      // タイマーが完全にリセットされた状態から開始した場合のみ「開始時刻」を記録する
+      // (一時停止からの再開では上書きしない)
+      if (sessionStartHour === null) {
+        sessionStartHour = new Date().getHours();
+      }
+
       document.getElementById('start-btn').classList.add('hidden');
       document.getElementById('pause-btn').classList.remove('hidden');
       document.getElementById('floating-timer').classList.remove('hidden');
@@ -388,6 +394,14 @@
           if (timerSeconds === 0) {
             if (loopState === 'work') {
               saveTimerSessionAuto(false);
+
+              // 25分学習+5分休憩の標準パターンで完走した回数だけをカウントする
+              if (pomoWorkMin === 25 && pomoBreakMin === 5) {
+                pomodoroCompletedCount++;
+                savePomodoroCompletedCount();
+                if (typeof checkAchievements === 'function') checkAchievements({ trigger: 'pomodoro_complete' });
+              }
+
               if (pomoBreakMin > 0) {
                 playAlarmSound('集中タイム終了！休憩に入ります。');
                 loopState = 'break';
@@ -445,6 +459,7 @@
       loopState = 'work';
       subjectElapsedSeconds = {};
       hasTimerStartedEver = false;
+      sessionStartHour = null;
       updateSaveButtonState();
 
       if (timerMode === 'stopwatch') {
@@ -584,6 +599,16 @@
         saveLogs();
         updateDashboardData();
         showToast(`自動保存: ${totalRecordedMins}分を記録しました！`);
+
+        if (typeof checkAchievements === 'function') {
+          checkAchievements({
+            trigger: 'timer_save',
+            timerMode: timerMode,
+            startHour: sessionStartHour,
+            sessionMinutes: totalRecordedMins,
+            isPomodoroStandard: (timerMode === 'pomodoro' && pomoWorkMin === 25 && pomoBreakMin === 5)
+          });
+        }
       }
 
       subjectElapsedSeconds = {};
@@ -805,4 +830,8 @@
       document.getElementById('manual-note').value = '';
       showToast('学習記録を保存しました');
       updateDashboardData();
+
+      if (typeof checkAchievements === 'function') {
+        checkAchievements({ trigger: 'manual_save', sessionMinutes: totalMinutes });
+      }
     }
