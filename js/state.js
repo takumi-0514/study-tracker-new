@@ -2,10 +2,11 @@
 // アプリ全体で共有する状態変数とlocalStorageからの初期読み込み
 
     const DEFAULT_SUBJECTS = [
-      { id: 'sub_1', name: '英語', color: '#6366f1' },
-      { id: 'sub_2', name: '数学', color: '#10b981' },
-      { id: 'sub_3', name: 'プログラミング', color: '#f59e0b' },
-      { id: 'sub_4', name: '読書', color: '#ec4899' }
+      { id: 'sub_1', name: '国語', color: '#6366f1', weeklyGoalMinutes: 120 },
+      { id: 'sub_2', name: '数学', color: '#10b981', weeklyGoalMinutes: 120 },
+      { id: 'sub_3', name: '英語', color: '#f59e0b', weeklyGoalMinutes: 120 },
+      { id: 'sub_4', name: '理科', color: '#ec4899', weeklyGoalMinutes: 120 },
+      { id: 'sub_5', name: '社会', color: '#3b82f6', weeklyGoalMinutes: 120 }
     ];
 
     let activeTodoTask = null;
