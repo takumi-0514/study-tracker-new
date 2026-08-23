@@ -16,15 +16,14 @@
       const container = document.getElementById('subject-list');
       if (!container) return;
       container.innerHTML = '';
-      const weekStart = getNDaysAgoDate(6);
-      const todayStr = getTodayString();
+      const { start: weekStart, end: weekEnd } = getCalendarWeekRange(0);
       subjects.forEach(sub => {
         const card = document.createElement('div');
         card.className = "flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl";
 
         let goalHtml = '';
         if (sub.weeklyGoalMinutes > 0) {
-          const weekMins = logs.filter(l => l.subjectId === sub.id && l.date >= weekStart && l.date <= todayStr)
+          const weekMins = logs.filter(l => l.subjectId === sub.id && l.date >= weekStart && l.date <= weekEnd)
                                 .reduce((sum, l) => sum + l.minutes, 0);
           const percent = Math.min(100, Math.round((weekMins / sub.weeklyGoalMinutes) * 100));
           const achieved = weekMins >= sub.weeklyGoalMinutes;
