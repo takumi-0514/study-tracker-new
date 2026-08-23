@@ -69,6 +69,7 @@
       showToast('タスクを追加しました！');
 
       refreshActiveTodoView();
+      if (typeof checkAchievements === 'function') checkAchievements({ trigger: 'todo_add' });
     }
 
     function handleScheduleTaskAdd(e) {
@@ -163,6 +164,18 @@
         todo.completed = !todo.completed;
         saveTodos();
         refreshActiveTodoView();
+
+        if (todo.completed) {
+          todoCompletedCount++;
+          saveTodoCompletedCount();
+          if (typeof checkAchievements === 'function') {
+            const todayStr = getTodayString();
+            checkAchievements({
+              trigger: 'todo_complete',
+              onTime: !todo.dueDate || todo.dueDate >= todayStr
+            });
+          }
+        }
       }
     }
 
@@ -595,6 +608,13 @@
       if (typeof notifyDataChanged === 'function') notifyDataChanged();
       closeScheduleModal();
       renderScheduleView();
+
+      if (typeof checkAchievements === 'function') {
+        const dayTotalMins = window.timeSchedules
+          .filter(s => s.date === dateStr)
+          .reduce((sum, s) => sum + (timeToMinutes(s.endTime) - timeToMinutes(s.startTime)), 0);
+        checkAchievements({ trigger: 'schedule_save', dayScheduledMinutes: dayTotalMins });
+      }
     }
 
     function deleteScheduleItem(id) {
