@@ -28,6 +28,7 @@
                                 .reduce((sum, l) => sum + l.minutes, 0);
           const percent = Math.min(100, Math.round((weekMins / sub.weeklyGoalMinutes) * 100));
           const achieved = weekMins >= sub.weeklyGoalMinutes;
+          const weekStreak = calculateSubjectWeekStreak(sub.id);
           goalHtml = `
             <div class="mt-2 w-full">
               <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
@@ -37,6 +38,7 @@
               <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                 <div class="h-full rounded-full ${achieved ? 'bg-emerald-500' : ''}" style="width: ${percent}%; ${achieved ? '' : `background-color: ${sub.color}`}"></div>
               </div>
+              ${weekStreak > 0 ? `<div class="text-[10px] text-orange-600 font-semibold mt-1">🔥 ${weekStreak}週連続達成中</div>` : ''}
             </div>
           `;
         }
