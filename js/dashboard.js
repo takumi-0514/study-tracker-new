@@ -44,8 +44,7 @@
     }
 
     function sumSubjectMinsInWeekWindow(subjectId, weekOffset) {
-      const start = getNDaysAgoDate(6 + weekOffset * 7);
-      const end = getNDaysAgoDate(weekOffset * 7);
+      const { start, end } = getCalendarWeekRange(weekOffset);
       return logs.filter(l => l.subjectId === subjectId && l.date >= start && l.date <= end)
                   .reduce((sum, l) => sum + l.minutes, 0);
     }
@@ -70,13 +69,13 @@
       const todayStr = getTodayString();
       let todayMins = 0;
       let totalMins = 0;
-      const weekStart = getNDaysAgoDate(6);
+      const { start: weekStart, end: weekEnd } = getCalendarWeekRange(0);
       let weekMins = 0;
 
       logs.forEach(log => {
         totalMins += log.minutes;
         if (log.date === todayStr) todayMins += log.minutes;
-        if (log.date >= weekStart && log.date <= todayStr) weekMins += log.minutes;
+        if (log.date >= weekStart && log.date <= weekEnd) weekMins += log.minutes;
       });
 
       document.getElementById('kpi-today').innerText = formatMinutes(todayMins);
@@ -168,11 +167,11 @@
       }
 
       const todayStr = getTodayString();
-      const weekStart = getNDaysAgoDate(6);
+      const { start: weekStart, end: weekEnd } = getCalendarWeekRange(0);
       const subjectMinsThisWeek = {};
       let weekTotalMins = 0;
       logs.forEach(l => {
-        if (l.date >= weekStart && l.date <= todayStr) {
+        if (l.date >= weekStart && l.date <= weekEnd) {
           subjectMinsThisWeek[l.subjectId] = (subjectMinsThisWeek[l.subjectId] || 0) + l.minutes;
           weekTotalMins += l.minutes;
         }
@@ -249,10 +248,12 @@
         previousLabel = '先月の合計';
         breakdownLabel = '科目別内訳(今月)';
       } else {
-        currentStart = getNDaysAgoDate(6);
-        currentEnd = todayStr;
-        previousStart = getNDaysAgoDate(13);
-        previousEnd = getNDaysAgoDate(7);
+        const thisWeek = getCalendarWeekRange(0);
+        const lastWeek = getCalendarWeekRange(1);
+        currentStart = thisWeek.start;
+        currentEnd = thisWeek.end;
+        previousStart = lastWeek.start;
+        previousEnd = lastWeek.end;
         currentLabel = '今週の合計';
         previousLabel = '先週の合計';
         breakdownLabel = '科目別内訳(今週)';
@@ -508,7 +509,7 @@
 
       tbody.innerHTML = '';
       const todayStr = getTodayString();
-      const weekStart = getNDaysAgoDate(6);
+      const { start: weekStart, end: weekEnd } = getCalendarWeekRange(0);
       const monthStart = todayStr.slice(0, 7) + '-01';
 
       let filteredLogs = [...logs];
@@ -516,8 +517,8 @@
         filteredLogs = filteredLogs.filter(l => l.date === todayStr);
         document.getElementById('history-period-label').innerText = '本日の勉強時間';
       } else if (historyPeriodFilter === 'week') {
-        filteredLogs = filteredLogs.filter(l => l.date >= weekStart && l.date <= todayStr);
-        document.getElementById('history-period-label').innerText = '直近7日間の勉強時間';
+        filteredLogs = filteredLogs.filter(l => l.date >= weekStart && l.date <= weekEnd);
+        document.getElementById('history-period-label').innerText = '今週の勉強時間';
       } else if (historyPeriodFilter === 'month') {
         filteredLogs = filteredLogs.filter(l => l.date >= monthStart && l.date <= todayStr);
         document.getElementById('history-period-label').innerText = '今月の勉強時間';
