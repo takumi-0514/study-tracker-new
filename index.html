@@ -77,10 +77,6 @@
           <i data-lucide="folder-kanban" class="w-5 h-5"></i>
           <span>科目・目標設定</span>
         </button>
-        <button onclick="switchTab('achievements')" id="nav-achievements" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800">
-          <i data-lucide="trophy" class="w-5 h-5"></i>
-          <span>実績</span>
-        </button>
       </nav>
     </div>
 
@@ -729,9 +725,19 @@
       <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 class="text-2xl font-bold text-slate-900">学習履歴</h2>
-          <p class="text-slate-500 text-sm">これまでの全記録ログと期間別集計</p>
+          <p class="text-slate-500 text-sm">これまでの全記録ログと実績</p>
         </div>
+        <div class="bg-slate-200/80 p-1 rounded-xl flex text-xs font-medium">
+          <button id="hist-subtab-log-btn" onclick="setHistorySubTab('log')" class="px-4 py-2 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold">
+            <i data-lucide="list" class="w-4 h-4 inline mr-1"></i>記録一覧
+          </button>
+          <button id="hist-subtab-achievements-btn" onclick="setHistorySubTab('achievements')" class="px-4 py-2 rounded-lg transition text-slate-600">
+            <i data-lucide="trophy" class="w-4 h-4 inline mr-1"></i>実績
+          </button>
+        </div>
+      </header>
 
+      <div id="hist-subtab-log-content" class="space-y-6">
         <div class="flex flex-wrap items-center gap-2">
           <select id="history-filter-subject" onchange="renderHistoryTable()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none shadow-sm">
             <option value="all">すべての科目</option>
@@ -744,47 +750,59 @@
             <button id="hist-filter-month" onclick="setHistoryFilter('month')" class="px-3 py-1.5 rounded-lg transition text-slate-600">今月</button>
           </div>
         </div>
-      </header>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
-          <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-            <i data-lucide="clock" class="w-6 h-6"></i>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
+            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+              <i data-lucide="clock" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="text-xs font-medium text-slate-500" id="history-period-label">選択期間の勉強時間</div>
+              <div class="text-2xl font-bold text-slate-800" id="history-period-time">0h 0m</div>
+            </div>
           </div>
-          <div>
-            <div class="text-xs font-medium text-slate-500" id="history-period-label">選択期間の勉強時間</div>
-            <div class="text-2xl font-bold text-slate-800" id="history-period-time">0h 0m</div>
+
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
+            <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+              <i data-lucide="check-circle" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="text-xs font-medium text-slate-500">記録セッション数</div>
+              <div class="text-2xl font-bold text-slate-800" id="history-period-count">0回</div>
+            </div>
           </div>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center gap-4">
-          <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-            <i data-lucide="check-circle" class="w-6 h-6"></i>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-xs text-slate-400 uppercase font-semibold border-b border-slate-200">
+                <tr>
+                  <th class="py-3.5 px-6">日付</th>
+                  <th class="py-3.5 px-6">科目</th>
+                  <th class="py-3.5 px-6">学習時間</th>
+                  <th class="py-3.5 px-6">メモ</th>
+                  <th class="py-3.5 px-6 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
           </div>
-          <div>
-            <div class="text-xs font-medium text-slate-500">記録セッション数</div>
-            <div class="text-2xl font-bold text-slate-800" id="history-period-count">0回</div>
+          <div id="history-empty" class="p-8 text-center text-slate-400 text-sm hidden">
+            指定された条件の学習記録はありません。
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs text-slate-400 uppercase font-semibold border-b border-slate-200">
-              <tr>
-                <th class="py-3.5 px-6">日付</th>
-                <th class="py-3.5 px-6">科目</th>
-                <th class="py-3.5 px-6">学習時間</th>
-                <th class="py-3.5 px-6">メモ</th>
-                <th class="py-3.5 px-6 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody id="history-tbody" class="divide-y divide-slate-100"></tbody>
-          </table>
+      <div id="hist-subtab-achievements-content" class="hidden space-y-6">
+        <div class="flex items-center justify-end">
+          <div class="bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-sm flex items-center gap-2">
+            <i data-lucide="trophy" class="w-5 h-5 text-amber-500"></i>
+            <span class="text-sm font-bold text-slate-800" id="achievements-count">0 / 0 解除</span>
+          </div>
         </div>
-        <div id="history-empty" class="p-8 text-center text-slate-400 text-sm hidden">
-          指定された条件の学習記録はありません。
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+          <div id="achievements-list"></div>
         </div>
       </div>
     </section>
@@ -882,24 +900,6 @@
       </div>
     </section>
 
-    <!-- TAB 6: ACHIEVEMENTS -->
-    <section id="tab-achievements" class="space-y-6 hidden">
-      <header class="flex items-center justify-between">
-        <div>
-          <h2 class="text-2xl font-bold text-slate-900">実績</h2>
-          <p class="text-slate-500 text-sm">学習の積み重ねを実績として記録します</p>
-        </div>
-        <div class="bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-sm flex items-center gap-2">
-          <i data-lucide="trophy" class="w-5 h-5 text-amber-500"></i>
-          <span class="text-sm font-bold text-slate-800" id="achievements-count">0 / 0 解除</span>
-        </div>
-      </header>
-
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
-        <div id="achievements-list"></div>
-      </div>
-    </section>
-
   </main>
 
   <!-- Mobile Bottom Navigation Bar -->
@@ -927,10 +927,6 @@
     <button onclick="switchTab('subjects')" id="mob-nav-subjects" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
       <i data-lucide="folder-kanban" class="w-5 h-5"></i>
       <span>設定</span>
-    </button>
-    <button onclick="switchTab('achievements')" id="mob-nav-achievements" class="flex flex-col items-center gap-1 text-[10px] font-medium hover:text-slate-100">
-      <i data-lucide="trophy" class="w-5 h-5"></i>
-      <span>実績</span>
     </button>
   </nav>
 
