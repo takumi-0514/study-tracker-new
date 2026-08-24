@@ -8,8 +8,8 @@
 
     const ACHIEVEMENT_SUBJECT_NAMES = ['国語', '数学', '英語', '理科', '社会'];
 
-    function defAchievement(id, category, name, checkFn, hidden = false) {
-      ACHIEVEMENTS.push({ id, category, name, checkFn, hidden });
+    function defAchievement(id, category, name, checkFn, hidden = false, desc = '') {
+      ACHIEVEMENTS.push({ id, category, name, checkFn, hidden, desc });
     }
 
     // ---- 集計ヘルパー ----
@@ -108,35 +108,36 @@
       const dailyNames = ["はじめの一歩！","すばらしいスタート","いい調子だね！","頑張り屋さんの君へ","応援してるよ！","目標に向かって一直線","すごい集中力！","努力の成果が出てるね","君ならできる！","誇らしいよ","今日も一歩前進","頼もしい集中力","ここまで来たら本物","圧巻の一日","驚異の集中力","まさに全力投球","底知れぬ集中力","伝説級の一日","常人離れした頑張り","圧倒的な学習量","もはや職人技","驚異的な一日","限界を超えた集中","勉強の鬼"];
       for (let i = 0; i < 24; i++) {
         const mins = (i + 1) * 30;
-        defAchievement(`daily_${mins}`, '1日の合計学習時間', dailyNames[i], () => ach_maxDailyTotalMinutes() >= mins);
+        const label = mins < 60 ? `${mins}分` : (mins % 60 === 0 ? `${mins/60}時間` : `${Math.floor(mins/60)}時間${mins%60}分`);
+        defAchievement(`daily_${mins}`, '1日の合計学習時間', dailyNames[i], () => ach_maxDailyTotalMinutes() >= mins, false, `1日の合計学習時間が${label}に達すると解除`);
       }
 
       // 2. 1週間の合計学習時間 (7時間刻み、70時間まで)
       const weeklyNames = ["素敵な1週間の始まり","今週も頑張ったね！","習慣になってきたよ","君の成長が嬉しいな","充実の1週間","圧巻のペース","驚くべき継続力","圧倒的な週間記録","まさに努力の結晶","一週間の頂点へ"];
       for (let i = 0; i < 10; i++) {
         const hours = (i + 1) * 7;
-        defAchievement(`weekly_${hours}`, '1週間の合計学習時間', weeklyNames[i], () => ach_maxCalendarWeekTotalMinutes() >= hours * 60);
+        defAchievement(`weekly_${hours}`, '1週間の合計学習時間', weeklyNames[i], () => ach_maxCalendarWeekTotalMinutes() >= hours * 60, false, `1週間(日〜土)の合計学習時間が${hours}時間に達すると解除`);
       }
 
       // 3. 1か月の合計学習時間 (10時間刻み、200時間まで)
       const monthlyNames = ["1か月お疲れ様！","着実に進んでるね","今月の目標達成！","すごい粘り強さだね","立派な積み重ね","圧巻の継続力","驚異のペース配分","月間トップクラス","圧倒的な努力量","三桁の壁突破","さらなる高みへ","驚くべき継続の証","月間チャンピオン級","圧巻の一か月","伝説の学習月間","常人離れの継続力","まさに努力の化身","圧倒的月間記録","頂点まであと少し","月間の頂へ"];
       for (let i = 0; i < 20; i++) {
         const hours = (i + 1) * 10;
-        defAchievement(`monthly_${hours}`, '1か月の合計学習時間', monthlyNames[i], () => ach_maxCalendarMonthTotalMinutes() >= hours * 60);
+        defAchievement(`monthly_${hours}`, '1か月の合計学習時間', monthlyNames[i], () => ach_maxCalendarMonthTotalMinutes() >= hours * 60, false, `1か月の合計学習時間が${hours}時間に達すると解除`);
       }
 
       // 4. 連続学習日数
       const streakThresholds = [3, 7, 14, 30, 90, 180, 365];
       const streakNames = ["3日坊主回避", "一週間の壁突破", "止まらない歩み", "継続は力なり", "揺るぎない習慣", "継続の達人", "皆勤賞・一年生"];
       streakThresholds.forEach((days, i) => {
-        defAchievement(`streak_${days}`, '連続学習日数', streakNames[i], () => ach_longestStudyStreakDays() >= days);
+        defAchievement(`streak_${days}`, '連続学習日数', streakNames[i], () => ach_longestStudyStreakDays() >= days, false, `${days}日連続で学習記録をつけると解除`);
       });
 
       // 5. 連続目標達成日数
       const goalStreakThresholds = [1, 3, 5, 7, 14, 30];
       const goalStreakNames = ["約束を守れたね！", "有言実行、かっこいい！", "自分との勝負に勝ってるね", "有言実行の一週間", "揺るがない意志", "目標達成マスター"];
       goalStreakThresholds.forEach((days, i) => {
-        defAchievement(`goalstreak_${days}`, '連続目標達成日数', goalStreakNames[i], () => ach_longestGoalStreakDays() >= days);
+        defAchievement(`goalstreak_${days}`, '連続目標達成日数', goalStreakNames[i], () => ach_longestGoalStreakDays() >= days, false, `1日の目標学習時間を${days}日連続で達成すると解除`);
       });
 
       // 6. 科目別週間目標達成(連続週数)
@@ -145,7 +146,7 @@
       ACHIEVEMENT_SUBJECT_NAMES.forEach(sName => {
         subjWeekThresholds.forEach((weeks, i) => {
           defAchievement(`subjweek_${sName}_${weeks}`, `${sName} 週間目標達成`, subjWeekTemplates[i].replace('{s}', sName),
-            () => ach_longestSubjectWeeklyGoalStreakWeeks(sName) >= weeks);
+            () => ach_longestSubjectWeeklyGoalStreakWeeks(sName) >= weeks, false, `${sName}の週間目標を${weeks}週連続で達成すると解除`);
         });
       });
 
@@ -155,7 +156,7 @@
       ACHIEVEMENT_SUBJECT_NAMES.forEach(sName => {
         subjCumThresholds.forEach((hours, i) => {
           defAchievement(`subjcum_${sName}_${hours}`, `${sName} 累計学習時間`, subjCumTemplates[i].replace('{s}', sName),
-            () => ach_subjectTotalMinutes(sName) >= hours * 60);
+            () => ach_subjectTotalMinutes(sName) >= hours * 60, false, `${sName}の累計学習時間が${hours}時間に達すると解除`);
         });
       });
 
@@ -163,40 +164,40 @@
       const grandThresholds = [1, 3, 5, 25, 50, 75, 77, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500];
       const grandNames = ["小さな一歩", "芽生えた知識", "すくすく育つ芽", "積み上がる知識", "知識の塔", "揺るぎない基盤", "ラッキー7!", "三桁の学習者", "知識の探求者", "圧倒的な蓄積", "学びの巨匠", "圧巻の知識量", "500時間の軌跡", "学習の求道者", "驚異の学習量", "知の巨人", "圧倒的な積み重ね", "1000時間の到達者", "さらなる高みへ", "知識の殿堂入り", "圧巻の学習遍歴", "頂点まであと少し", "学びを極めし者"];
       grandThresholds.forEach((hours, i) => {
-        defAchievement(`grand_${hours}`, '全科目合計累計学習時間', grandNames[i], () => ach_grandTotalMinutes() >= hours * 60);
+        defAchievement(`grand_${hours}`, '全科目合計累計学習時間', grandNames[i], () => ach_grandTotalMinutes() >= hours * 60, false, `全科目合計の累計学習時間が${hours}時間に達すると解除`);
       });
 
       // 9. ToDo完了回数
       const todoThresholds = [1, 3, 5, 10, 25, 50, 75, 77, 100];
       const todoNames = ["ひとつクリア！", "順調順調！", "素晴らしい達成感", "タスク消化名人", "頼れるタスクハンター", "チェックマークの達人", "圧巻のタスク処理力", "ラッキー7!", "タスクマスター"];
       todoThresholds.forEach((count, i) => {
-        defAchievement(`todocount_${count}`, 'ToDo完了回数', todoNames[i], () => (todoCompletedCount || 0) >= count);
+        defAchievement(`todocount_${count}`, 'ToDo完了回数', todoNames[i], () => (todoCompletedCount || 0) >= count, false, `ToDoを累計${count}回完了すると解除`);
       });
 
       // 10. ポモドーロ完走回数(25-5パターン限定)
       const pomoThresholds = [1, 3, 5, 10, 25, 50, 75, 77, 100];
       const pomoNames = ["25分集中できたね！", "メリハリが大事！", "タイマーと一緒に頑張ろう", "集中モードON", "ポモドーロの達人", "圧巻の継続力", "揺るぎない集中習慣", "ラッキー7!", "ポモドーロマスター"];
       pomoThresholds.forEach((count, i) => {
-        defAchievement(`pomocount_${count}`, 'ポモドーロ完走回数', pomoNames[i], () => (pomodoroCompletedCount || 0) >= count);
+        defAchievement(`pomocount_${count}`, 'ポモドーロ完走回数', pomoNames[i], () => (pomodoroCompletedCount || 0) >= count, false, `25分学習+5分休憩のポモドーロを累計${count}回完走すると解除`);
       });
 
       // 11. 「はじめて」系(イベント駆動、checkFnは常にfalseを返す=通常スキャンでは解除しない)
-      defAchievement('first_stopwatch', 'はじめて', '勉強開始!', () => false);
-      defAchievement('first_timer', 'はじめて', '勉強終了!', () => false);
-      defAchievement('first_alarm', 'はじめて', '時間きっちり!', () => false);
-      defAchievement('first_pomodoro', 'はじめて', '初めましてポモドーロタイマー', () => false);
-      defAchievement('first_todo_add', 'はじめて', '初めてのToDo追加', () => false);
-      defAchievement('first_todo_ontime', 'はじめて', '初めての期限内ToDo完了', () => false);
-      defAchievement('first_schedule_full', 'はじめて', '初めてのスケジュール24時間埋め', () => false);
-      defAchievement('first_manual', 'はじめて', '初めての手動記録追加', () => false);
+      defAchievement('first_stopwatch', 'はじめて', '勉強開始!', () => false, false, 'ストップウォッチモードで初めて学習を記録すると解除');
+      defAchievement('first_timer', 'はじめて', '勉強終了!', () => false, false, 'タイマー(カウントダウン)モードで初めて学習を記録すると解除');
+      defAchievement('first_alarm', 'はじめて', '時間きっちり!', () => false, false, '時刻アラームモードで初めて学習を記録すると解除');
+      defAchievement('first_pomodoro', 'はじめて', '初めましてポモドーロタイマー', () => false, false, 'ポモドーロモードで初めて学習を記録すると解除');
+      defAchievement('first_todo_add', 'はじめて', '初めてのToDo追加', () => false, false, '初めてToDoを追加すると解除');
+      defAchievement('first_todo_ontime', 'はじめて', '初めての期限内ToDo完了', () => false, false, '初めて期限内にToDoを完了すると解除');
+      defAchievement('first_schedule_full', 'はじめて', '初めてのスケジュール24時間埋め', () => false, false, '1日のスケジュールを24時間分すべて埋めると解除');
+      defAchievement('first_manual', 'はじめて', '初めての手動記録追加', () => false, false, '初めて手動で学習記録を追加すると解除');
 
       // 12. 隠し実績・独立単発実績(イベント駆動)
       defAchievement('hidden_late_todo', '隠し実績', '決めたことはやろう', () => false, true);
       defAchievement('hidden_early_bird', '隠し実績', '早起きは三文の徳', () => false, true);
       defAchievement('hidden_night_owl', '隠し実績', '深夜の学習者', () => false, true);
-      defAchievement('special_all_subjects_day', '単発実績', '五教科制覇', () => false);
-      defAchievement('special_4h_session', '単発実績', '集中力の鬼', () => false);
-      defAchievement('special_6h_session', '単発実績', '頑張りすぎ、、、？', () => false);
+      defAchievement('special_all_subjects_day', '単発実績', '五教科制覇', () => false, false, '登録している全科目を同じ日に学習すると解除');
+      defAchievement('special_4h_session', '単発実績', '集中力の鬼', () => false, false, '1回のセッションで連続4時間以上学習すると解除');
+      defAchievement('special_6h_session', '単発実績', '頑張りすぎ、、、？', () => false, false, '1回のセッションで連続6時間以上学習すると解除');
 
       // 13. 実績解除率(他の全実績が確定した後、最後に評価する)
       const rateThresholds = [10, 25, 50, 75, 100];
@@ -206,7 +207,7 @@
           const others = ACHIEVEMENTS.filter(a => a.category !== '実績解除率');
           const unlockedCount = others.filter(a => unlockedAchievements[a.id]).length;
           return others.length > 0 && (unlockedCount / others.length) * 100 >= pct;
-        });
+        }, false, `全実績のうち${pct}%を解除すると解除`);
       });
 
       achievementsBuilt = true;
@@ -357,6 +358,7 @@
           const card = document.createElement('div');
           if (isUnlocked) {
             card.className = 'flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5';
+            card.title = a.desc || '';
             card.innerHTML = `
               <span class="text-lg flex-shrink-0">🏆</span>
               <div class="min-w-0">
@@ -365,11 +367,12 @@
               </div>
             `;
           } else {
-            card.className = 'flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 opacity-60';
+            card.className = 'flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 opacity-60 cursor-help';
+            card.title = a.hidden ? '？隠し実績です(条件は秘密)' : (a.desc || '？？？');
             card.innerHTML = `
               <span class="text-lg flex-shrink-0">🔒</span>
               <div class="min-w-0">
-                <div class="text-xs font-semibold text-slate-500 truncate">${a.hidden ? '？？？' : a.name}</div>
+                <div class="text-xs font-semibold text-slate-500 truncate">？？？</div>
               </div>
             `;
           }
