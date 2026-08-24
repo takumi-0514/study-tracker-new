@@ -29,7 +29,7 @@
     }
 
     function switchTab(tabId) {
-      ['timer', 'problem', 'todos', 'dashboard', 'history', 'subjects', 'achievements'].forEach(tab => {
+      ['timer', 'problem', 'todos', 'dashboard', 'history', 'subjects'].forEach(tab => {
         const section = document.getElementById(`tab-${tab}`);
         const btn = document.getElementById(`nav-${tab}`);
         const mobBtn = document.getElementById(`mob-nav-${tab}`);
@@ -59,10 +59,9 @@
 
       if (tabId === 'dashboard') {
         updateDashboardData();
-      } else if (tabId === 'achievements') {
-        renderAchievementsPage();
       } else if (tabId === 'history') {
         renderHistoryTable();
+        renderAchievementsPage();
       } else if (tabId === 'problem') {
         renderProblemHistory();
       } else if (tabId === 'todos') {
@@ -73,6 +72,26 @@
         } else {
           renderTodoList();
         }
+      }
+    }
+
+    function setHistorySubTab(subTab) {
+      const logBtn = document.getElementById('hist-subtab-log-btn');
+      const achBtn = document.getElementById('hist-subtab-achievements-btn');
+      const logContent = document.getElementById('hist-subtab-log-content');
+      const achContent = document.getElementById('hist-subtab-achievements-content');
+
+      if (subTab === 'log') {
+        logBtn.className = "px-4 py-2 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
+        achBtn.className = "px-4 py-2 rounded-lg transition text-slate-600";
+        logContent.classList.remove('hidden');
+        achContent.classList.add('hidden');
+      } else {
+        achBtn.className = "px-4 py-2 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
+        logBtn.className = "px-4 py-2 rounded-lg transition text-slate-600";
+        achContent.classList.remove('hidden');
+        logContent.classList.add('hidden');
+        renderAchievementsPage();
       }
     }
 
