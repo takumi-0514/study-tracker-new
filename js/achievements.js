@@ -367,18 +367,29 @@
               </div>
             `;
           } else {
-            card.className = 'flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 opacity-60 cursor-help';
-            card.title = a.hidden ? '？隠し実績です(条件は秘密)' : (a.desc || '？？？');
+            card.className = 'flex flex-col gap-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 opacity-70 cursor-pointer select-none transition hover:opacity-90';
+            const revealText = a.hidden ? '？隠し実績です(条件は秘密)' : (a.desc || '？？？');
             card.innerHTML = `
-              <span class="text-lg flex-shrink-0">🔒</span>
-              <div class="min-w-0">
-                <div class="text-xs font-semibold text-slate-500 truncate">？？？</div>
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg flex-shrink-0">🔒</span>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-semibold text-slate-500 truncate">？？？</div>
+                </div>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" data-chevron></i>
               </div>
+              <div class="text-[10px] text-slate-500 leading-relaxed hidden pl-7 pr-1" data-reveal>${revealText}</div>
             `;
+            card.addEventListener('click', () => {
+              const revealEl = card.querySelector('[data-reveal]');
+              const chevronEl = card.querySelector('[data-chevron]');
+              revealEl.classList.toggle('hidden');
+              if (chevronEl) chevronEl.style.transform = revealEl.classList.contains('hidden') ? '' : 'rotate(180deg)';
+            });
           }
           grid.appendChild(card);
         });
 
         container.appendChild(section);
       });
+      lucide.createIcons();
     }
