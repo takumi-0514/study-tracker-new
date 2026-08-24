@@ -45,6 +45,8 @@
     let todayPieChartInstance = null;
     let tomorrowPieChartInstance = null;
 
+    let sessionStartHour = null;
+
     window.subjects = JSON.parse(localStorage.getItem('st_subjects')) || DEFAULT_SUBJECTS;
     window.logs = JSON.parse(localStorage.getItem('st_logs')) || [];
     window.todos = JSON.parse(localStorage.getItem('st_todos')) || [];
@@ -57,6 +59,9 @@
       { id: 'c_3', name: '部活・行事', color: '#f59e0b' }
     ];
     window.schedulePresets = JSON.parse(localStorage.getItem('st_sched_presets')) || {};
+    window.unlockedAchievements = JSON.parse(localStorage.getItem('st_unlocked_achievements')) || {};
+    window.todoCompletedCount = parseInt(localStorage.getItem('st_todo_completed_count')) || 0;
+    window.pomodoroCompletedCount = parseInt(localStorage.getItem('st_pomodoro_completed_count')) || 0;
 
 
 // ==== 永続化ヘルパー ====
@@ -75,4 +80,16 @@
     function saveTodos() { 
       localStorage.setItem('st_todos', JSON.stringify(todos)); 
       if (typeof notifyDataChanged === 'function') notifyDataChanged();
+    }
+
+    function saveUnlockedAchievements() {
+      localStorage.setItem('st_unlocked_achievements', JSON.stringify(unlockedAchievements));
+    }
+
+    function saveTodoCompletedCount() {
+      localStorage.setItem('st_todo_completed_count', String(todoCompletedCount));
+    }
+
+    function savePomodoroCompletedCount() {
+      localStorage.setItem('st_pomodoro_completed_count', String(pomodoroCompletedCount));
     }
