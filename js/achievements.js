@@ -192,9 +192,9 @@
       defAchievement('first_manual', 'はじめて', '初めての手動記録追加', () => false, false, '初めて手動で学習記録を追加すると解除');
 
       // 12. 隠し実績・独立単発実績(イベント駆動)
-      defAchievement('hidden_late_todo', '隠し実績', '決めたことはやろう', () => false, true);
-      defAchievement('hidden_early_bird', '隠し実績', '早起きは三文の徳', () => false, true);
-      defAchievement('hidden_night_owl', '隠し実績', '深夜の学習者', () => false, true);
+      defAchievement('hidden_late_todo', '隠し実績', '決めたことはやろう', () => false, true, '期限を過ぎてからでもToDoを完了すると解除');
+      defAchievement('hidden_early_bird', '隠し実績', '早起きは三文の徳', () => false, true, '朝5時台または6時台にタイマーを開始すると解除');
+      defAchievement('hidden_night_owl', '隠し実績', '深夜の学習者', () => false, true, '深夜2時台にタイマーを開始すると解除');
       defAchievement('special_all_subjects_day', '単発実績', '五教科制覇', () => false, false, '登録している全科目を同じ日に学習すると解除');
       defAchievement('special_4h_session', '単発実績', '集中力の鬼', () => false, false, '1回のセッションで連続4時間以上学習すると解除');
       defAchievement('special_6h_session', '単発実績', '頑張りすぎ、、、？', () => false, false, '1回のセッションで連続6時間以上学習すると解除');
@@ -356,19 +356,25 @@
         items.forEach(a => {
           const isUnlocked = !!unlockedAchievements[a.id];
           const card = document.createElement('div');
+          const revealText = isUnlocked
+            ? (a.desc || (a.hidden ? '隠し実績でした！' : ''))
+            : (a.hidden ? '？隠し実績です(条件は秘密)' : (a.desc || '？？？'));
+
           if (isUnlocked) {
-            card.className = 'flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5';
-            card.title = a.desc || '';
+            card.className = 'flex flex-col gap-1 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 cursor-pointer select-none transition hover:brightness-95';
             card.innerHTML = `
-              <span class="text-lg flex-shrink-0">🏆</span>
-              <div class="min-w-0">
-                <div class="text-xs font-bold text-slate-800 truncate">${a.name}</div>
-                <div class="text-[10px] text-slate-400">${unlockedAchievements[a.id]}</div>
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg flex-shrink-0">🏆</span>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-bold text-slate-800 truncate">${a.name}</div>
+                  <div class="text-[10px] text-slate-400">${unlockedAchievements[a.id]}</div>
+                </div>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" data-chevron></i>
               </div>
+              <div class="text-[10px] text-slate-500 leading-relaxed hidden pl-7 pr-1" data-reveal>${revealText}</div>
             `;
           } else {
             card.className = 'flex flex-col gap-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 opacity-70 cursor-pointer select-none transition hover:opacity-90';
-            const revealText = a.hidden ? '？隠し実績です(条件は秘密)' : (a.desc || '？？？');
             card.innerHTML = `
               <div class="flex items-center gap-2.5">
                 <span class="text-lg flex-shrink-0">🔒</span>
@@ -379,13 +385,15 @@
               </div>
               <div class="text-[10px] text-slate-500 leading-relaxed hidden pl-7 pr-1" data-reveal>${revealText}</div>
             `;
-            card.addEventListener('click', () => {
-              const revealEl = card.querySelector('[data-reveal]');
-              const chevronEl = card.querySelector('[data-chevron]');
-              revealEl.classList.toggle('hidden');
-              if (chevronEl) chevronEl.style.transform = revealEl.classList.contains('hidden') ? '' : 'rotate(180deg)';
-            });
           }
+
+          card.addEventListener('click', () => {
+            const revealEl = card.querySelector('[data-reveal]');
+            const chevronEl = card.querySelector('[data-chevron]');
+            revealEl.classList.toggle('hidden');
+            if (chevronEl) chevronEl.style.transform = revealEl.classList.contains('hidden') ? '' : 'rotate(180deg)';
+          });
+
           grid.appendChild(card);
         });
 
