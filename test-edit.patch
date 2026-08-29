@@ -1,0 +1,25 @@
+--- ./js/timer.js
++++ ./js/timer.js
+@@ -130,6 +130,7 @@
+     // アラーム時にだけMP3を再生する。
+     let audioUnlocked = false;
+     let alarmAudioContext = null;
++    let alarmAudioBuffer = null;
+ 
+     function unlockAudio() {
+       try {
+@@ -137,6 +138,15 @@
+ 
+         if (AudioContextClass) {
+           if (!alarmAudioContext) alarmAudioContext = new AudioContextClass();
++          
++          if (!alarmAudioBuffer) {
++            fetch('./timer-sound.mp3')
++              .then(res => res.arrayBuffer())
++              .then(buffer => alarmAudioContext.decodeAudioData(buffer))
++              .then(decoded => { alarmAudioBuffer = decoded; })
++              .catch(err => console.warn("[AUDIO] Buffer preload failed:", err));
++          }
+ 
+           const p = alarmAudioContext.resume();
+           if (p && typeof p.then === 'function') {

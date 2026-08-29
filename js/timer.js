@@ -129,6 +129,7 @@
     // アラーム時にだけMP3を再生する。
     let audioUnlocked = false;
     let alarmAudioContext = null;
+    let alarmAudioBuffer = null;
 
     function unlockAudio() {
       try {
@@ -136,6 +137,14 @@
 
         if (AudioContextClass) {
           if (!alarmAudioContext) alarmAudioContext = new AudioContextClass();
+
+          if (!alarmAudioBuffer) {
+            fetch('./timer-sound.mp3')
+              .then(res => res.arrayBuffer())
+              .then(buffer => alarmAudioContext.decodeAudioData(buffer))
+              .then(decoded => { alarmAudioBuffer = decoded; })
+              .catch(err => console.warn("[AUDIO] Buffer preload failed:", err));
+          }
 
           const p = alarmAudioContext.resume();
           if (p && typeof p.then === 'function') {
@@ -229,21 +238,10 @@
     function playAlarmSound(notificationMessage = 'タイマーが終了しました！') {
       showTimerNotification('StudyTracker Pro', notificationMessage);
 
-      const audio = document.getElementById('alarm-sound');
-      if (!audio) {
-        console.warn("[AUDIO] #alarm-sound が見つかりません");
-        return;
-      }
-
       if (alarmTimeout) {
         clearTimeout(alarmTimeout);
         alarmTimeout = null;
       }
-
-      audio.muted = false;
-      audio.volume = 1;
-      audio.loop = false;
-      try { audio.currentTime = 0; } catch (_) {}
 
       if (alarmAudioContext && alarmAudioContext.state === 'suspended') {
         alarmAudioContext.resume().catch(err =>
@@ -251,18 +249,43 @@
         );
       }
 
-      console.log("[AUDIO] alarm play", {
-        unlocked: audioUnlocked,
-        audioContextState: alarmAudioContext ? alarmAudioContext.state : 'none',
-        readyState: audio.readyState
-      });
+      // Web Audio APIを使って再生（バックグラウンドの音楽を止めないため）
+      if (alarmAudioContext && alarmAudioBuffer) {
+        try {
+          const source = alarmAudioContext.createBufferSource();
+          source.buffer = alarmAudioBuffer;
+          source.connect(alarmAudioContext.destination);
+          source.start(0);
+          console.log("[AUDIO] alarm started via Web Audio API");
+        } catch (e) {
+          console.warn("[AUDIO] Web Audio API playback failed:", e);
+          playAlarmSoundFallback();
+        }
+      } else {
+        // バッファがない場合のフォールバック（HTML Audio）
+        playAlarmSoundFallback();
+      }
+
+      alarmTimeout = setTimeout(() => {
+        stopAlarmAudio();
+      }, 5000);
+    }
+
+    function playAlarmSoundFallback() {
+      const audio = document.getElementById('alarm-sound');
+      if (!audio) return;
+
+      audio.muted = false;
+      audio.volume = 1;
+      audio.loop = false;
+      try { audio.currentTime = 0; } catch (_) {}
 
       const p = audio.play();
 
       if (p && typeof p.then === 'function') {
         p.then(() => {
           audioUnlocked = true;
-          console.log("[AUDIO] alarm started");
+          console.log("[AUDIO] alarm started via HTML Audio");
         }).catch(e => {
           console.warn("[AUDIO] alarm play blocked:", e);
           try {
@@ -271,20 +294,9 @@
             audio.play().catch(err2 =>
               console.warn("[AUDIO] alarm retry failed:", err2)
             );
-          } catch (retryErr) {
-            console.warn("[AUDIO] alarm retry exception:", retryErr);
-          }
+          } catch (retryErr) {}
         });
       }
-
-      alarmTimeout = setTimeout(() => {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.volume = 1;
-        audio.muted = false;
-        audio.loop = false;
-        alarmTimeout = null;
-      }, 5000);
     }
 
     function stopAlarmAudio() {
