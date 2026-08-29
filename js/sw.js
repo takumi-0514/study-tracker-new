@@ -1,15 +1,40 @@
-const CACHE_NAME = "study-timer-v2";
+const CACHE_NAME = "study-timer-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./timer-sound.mp3"
+  "./study_timer.png",
+  "./timer-sound.mp3",
+  "./js/achievements.js",
+  "./js/dashboard.js",
+  "./js/main.js",
+  "./js/state.js",
+  "./js/subjects.js",
+  "./js/sync.js",
+  "./js/timer.js",
+  "./js/todos.js",
+  "./js/ui.js",
+  "./js/utils.js",
+  "https://cdn.tailwindcss.com",
+  "https://cdn.jsdelivr.net/npm/chart.js",
+  "https://unpkg.com/lucide@latest"
 ];
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
+      .then(cache => {
+        // Use all() for critical files, but gracefully handle external ones if they fail
+        return Promise.allSettled(APP_SHELL.map(url => {
+          return fetch(new Request(url, { cache: 'no-cache', mode: 'no-cors' }))
+            .then(response => {
+              if (response.ok || response.type === 'opaque') {
+                return cache.put(url, response);
+              }
+              throw new Error(`Failed to fetch ${url}`);
+            });
+        }));
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -40,32 +65,25 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
-  const isScript = url.pathname.endsWith(".js") || url.pathname.endsWith(".html") || url.pathname === "/" || url.pathname.endsWith("/");
 
-  if (isScript) {
-    // JS/HTMLはネットワーク優先。オフライン時のみキャッシュにフォールバックする。
-    event.respondWith(
-      fetch(event.request).then(response => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        }
-        return response;
-      }).catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
-    );
-    return;
-  }
-
+  // Use Stale-While-Revalidate strategy for everything
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response && response.status === 200 && response.type !== "opaque") {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+    caches.match(event.request).then(cachedResponse => {
+      const fetchPromise = fetch(event.request).then(networkResponse => {
+        // Cache the new response (even if it's opaque from CDNs)
+        if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        return response;
-      }).catch(() => caches.match("./index.html"));
+        return networkResponse;
+      }).catch(err => {
+        console.warn('Network request failed, relying on cache', err);
+      });
+
+      // Return the cached response immediately if it exists, otherwise wait for the network
+      return cachedResponse || fetchPromise;
     })
   );
 });

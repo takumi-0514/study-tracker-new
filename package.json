@@ -1,0 +1,14 @@
+{
+  "name": "studytracker-pro",
+  "version": "1.0.0",
+  "description": "StudyTracker Pro app",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo \"No build step\"",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
