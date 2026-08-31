@@ -1,0 +1,24 @@
+--- ./index.html
++++ ./index.html
+@@ -873,11 +873,14 @@
+         </h3>
+         <p class="text-xs text-slate-500">普段のデータは高速なブラウザ内ストレージで完結し、裏で自動的にFirestoreとリアルタイム同期します。別の端末と共有する場合は同じ「同期ルームID」を入力してください。</p>
+         
+-        <div class="flex flex-col sm:flex-row items-center gap-3">
+-          <input type="text" id="sync-room-input" placeholder="例: study-room-1234" onchange="updateSyncRoom(this.value)" class="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none">
++        <div id="sync-auth-ui" class="space-y-4">
++          <div class="flex flex-col sm:flex-row items-center gap-3">
++            <input type="text" id="sync-room-input" placeholder="同期ルームID (例: room-123)" class="w-full sm:w-48 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none">
++            <input type="password" id="sync-password-input" placeholder="暗号化パスワード" class="w-full sm:w-48 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none">
++          </div>
++          <div class="flex gap-3">
++            <button onclick="createSyncRoom()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition">新規作成</button>
++            <button onclick="joinSyncRoom()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition">参加する</button>
++            <button onclick="disconnectSyncRoom()" id="sync-disconnect-btn" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-4 py-2 rounded-xl text-sm transition">連携解除</button>
++          </div>
+           <div class="text-xs text-emerald-600 font-semibold flex items-center gap-1.5" id="sync-status-indicator">
+             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+             <span id="sync-status-text">ローカル保存稼働中</span>
+           </div>
+         </div>
+       </div>
