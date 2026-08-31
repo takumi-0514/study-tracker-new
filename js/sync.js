@@ -137,6 +137,36 @@ async function initFirebase() {
   }
 }
 
+function updateSyncUIState(isConnected) {
+  const roomInput = document.getElementById('sync-room-input');
+  const passInput = document.getElementById('sync-password-input');
+  const createBtn = document.getElementById('sync-create-btn');
+  const joinBtn = document.getElementById('sync-join-btn');
+  const disconnectBtn = document.getElementById('sync-disconnect-btn');
+  
+  if (!roomInput || !passInput) return;
+  
+  if (isConnected) {
+    roomInput.disabled = true;
+    passInput.disabled = true;
+    roomInput.classList.add('opacity-60', 'bg-slate-200');
+    passInput.classList.add('opacity-60', 'bg-slate-200');
+    if (createBtn) createBtn.classList.add('hidden');
+    if (joinBtn) joinBtn.classList.add('hidden');
+    if (disconnectBtn) disconnectBtn.classList.remove('hidden');
+  } else {
+    roomInput.disabled = false;
+    passInput.disabled = false;
+    roomInput.classList.remove('opacity-60', 'bg-slate-200');
+    passInput.classList.remove('opacity-60', 'bg-slate-200');
+    roomInput.value = '';
+    passInput.value = '';
+    if (createBtn) createBtn.classList.remove('hidden');
+    if (joinBtn) joinBtn.classList.remove('hidden');
+    if (disconnectBtn) disconnectBtn.classList.add('hidden');
+  }
+}
+
 function updateSyncStatus(text, colorClass) {
   const statusText = document.getElementById('sync-status-text');
   const indicator = document.getElementById('sync-status-indicator');
@@ -303,14 +333,15 @@ window.createSyncRoom = async function() {
   const password = passInput.value.trim();
   
   if (!roomId || !password) {
-    alert("ルームIDとパスワードの両方を入力してください。");
+    if (typeof window.showToast === 'function') window.showToast("ルームIDとパスワードの両方を入力してください。");
+    else alert("ルームIDとパスワードの両方を入力してください。");
     return;
   }
   
   updateSyncStatus('☁️ ルーム確認中...', 'text-indigo-500');
   const database = await initFirebase();
   if (!database) {
-    alert("ネットワークエラーが発生しました。");
+    if (typeof window.showToast === 'function') window.showToast("ネットワークエラーが発生しました。");
     return;
   }
   
@@ -318,7 +349,8 @@ window.createSyncRoom = async function() {
   const docSnap = await getDoc(docRef);
   
   if (docSnap.exists()) {
-    alert("このルームIDは既に使用されています。別のIDを指定するか、「参加する」を選んでください。");
+    if (typeof window.showToast === 'function') window.showToast("エラー: このルームIDは既に使用されています。");
+    else alert("このルームIDは既に使用されています。別のIDを指定するか、「参加する」を選んでください。");
     updateSyncStatus('ローカル保存稼働中', 'text-emerald-600');
     return;
   }
@@ -326,13 +358,15 @@ window.createSyncRoom = async function() {
   // 新規作成
   localStorage.setItem('st_sync_room', roomId);
   localStorage.setItem('st_sync_password', password);
-  document.getElementById('sync-disconnect-btn').classList.remove('hidden');
+  updateSyncUIState(true);
   
   syncReady = true;
   isSyncing = false;
   markLocalDirty();
   await pushLocalDataToRemote(docRef, password);
   setupRealtimeSync(roomId, password);
+  
+  if (typeof window.showToast === 'function') window.showToast("同期ルームを新規作成し、接続しました！");
 };
 
 window.joinSyncRoom = async function() {
@@ -342,14 +376,15 @@ window.joinSyncRoom = async function() {
   const password = passInput.value.trim();
   
   if (!roomId || !password) {
-    alert("ルームIDとパスワードの両方を入力してください。");
+    if (typeof window.showToast === 'function') window.showToast("ルームIDとパスワードの両方を入力してください。");
+    else alert("ルームIDとパスワードの両方を入力してください。");
     return;
   }
   
   updateSyncStatus('☁️ ルーム確認中...', 'text-indigo-500');
   const database = await initFirebase();
   if (!database) {
-    alert("ネットワークエラーが発生しました。");
+    if (typeof window.showToast === 'function') window.showToast("ネットワークエラーが発生しました。");
     return;
   }
   
@@ -357,7 +392,8 @@ window.joinSyncRoom = async function() {
   const docSnap = await getDoc(docRef);
   
   if (!docSnap.exists()) {
-    alert("ルームが見つかりません。IDを確認するか、「新規作成」してください。");
+    if (typeof window.showToast === 'function') window.showToast("エラー: ルームが見つかりません。");
+    else alert("ルームが見つかりません。IDを確認するか、「新規作成」してください。");
     updateSyncStatus('ローカル保存稼働中', 'text-emerald-600');
     return;
   }
@@ -366,7 +402,8 @@ window.joinSyncRoom = async function() {
   if (remoteData.ciphertext) {
     const decryptedData = await decryptData(remoteData, password);
     if (!decryptedData) {
-      alert("パスワードが間違っています。");
+      if (typeof window.showToast === 'function') window.showToast("エラー: パスワードが間違っています。");
+      else alert("パスワードが間違っています。");
       updateSyncStatus('ローカル保存稼働中', 'text-emerald-600');
       return;
     }
@@ -378,12 +415,13 @@ window.joinSyncRoom = async function() {
     
     localStorage.setItem('st_sync_room', roomId);
     localStorage.setItem('st_sync_password', password);
-    document.getElementById('sync-disconnect-btn').classList.remove('hidden');
+    updateSyncUIState(true);
     
     setupRealtimeSync(roomId, password);
-    alert("ルームに参加し、データを同期しました。");
+    if (typeof window.showToast === 'function') window.showToast("ルームに参加し、データを同期しました！");
   } else {
-    alert("このルームは暗号化されていない古い形式です。");
+    if (typeof window.showToast === 'function') window.showToast("このルームは暗号化されていない古い形式です。");
+    else alert("このルームは暗号化されていない古い形式です。");
   }
 };
 
@@ -394,9 +432,7 @@ window.disconnectSyncRoom = function() {
   currentSyncPassword = '';
   syncReady = false;
   
-  document.getElementById('sync-room-input').value = '';
-  document.getElementById('sync-password-input').value = '';
-  document.getElementById('sync-disconnect-btn').classList.add('hidden');
+  updateSyncUIState(false);
   
   if (unsubscribeSnapshot) {
     unsubscribeSnapshot();
@@ -408,7 +444,7 @@ window.disconnectSyncRoom = function() {
   }
   
   updateSyncStatus('ローカル保存稼働中', 'text-emerald-600');
-  alert("同期設定を解除しました。");
+  if (typeof window.showToast === 'function') window.showToast("同期設定を解除しました。");
 };
 
 // --- 通知トリガー ---
@@ -441,7 +477,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (roomInput && passInput && savedRoom && savedPass) {
     roomInput.value = savedRoom;
     passInput.value = savedPass;
-    document.getElementById('sync-disconnect-btn').classList.remove('hidden');
+    updateSyncUIState(true);
     setupRealtimeSync(savedRoom, savedPass);
   }
 });
