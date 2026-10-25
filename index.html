@@ -138,7 +138,7 @@
   </header>
 
   <!-- Navigation Drawer Menu (Backdrop + Slide-out Panel) -->
-  <div id="drawer-backdrop" onclick="toggleDrawer(false)" class="hidden fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 transition-opacity duration-300 opacity-0 pointer-events-none"></div>
+  <div id="drawer-backdrop" onclick="toggleDrawer(false)" class="hidden fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 transition-opacity duration-300 opacity-0 pointer-events-none"></div>
 
   <aside id="drawer-panel" class="fixed top-0 bottom-0 left-0 w-80 max-w-[85vw] bg-slate-900 text-slate-100 z-50 flex flex-col justify-between shadow-2xl transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-800">
     <!-- Drawer Header -->
@@ -268,7 +268,7 @@
         <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 md:p-8 flex flex-col items-center justify-center">
           
           <!-- Timer Mode Dropdown (ドロップダウンメニュー) -->
-          <div class="w-full max-w-sm mb-6 relative" id="timer-mode-dropdown-container">
+          <div class="w-full max-w-sm mb-6 relative z-30" id="timer-mode-dropdown-container">
             <button type="button" onclick="toggleTimerModeDropdown(event)" id="timer-mode-dropdown-btn" class="w-full flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/90 shadow-2xs transition active:scale-[0.99] group text-left focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
               <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
@@ -287,7 +287,7 @@
             <div id="current-timer-mode-desc" class="text-[11px] text-slate-400 text-center mt-1.5 font-medium">0からスタートし学習経過時間を計測</div>
 
             <!-- Dropdown Menu Popup (ボタン真下に展開、絶対に画面外にはみ出さない) -->
-            <div id="timer-mode-dropdown-menu" class="hidden absolute top-[calc(100%-8px)] left-0 right-0 z-40 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 space-y-1">
+            <div id="timer-mode-dropdown-menu" class="hidden absolute top-[calc(100%-8px)] left-0 right-0 z-50 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 space-y-1">
               <button type="button" onclick="selectTimerModeDropdown('stopwatch')" id="timer-opt-stopwatch" class="timer-mode-opt w-full flex items-center justify-between p-2.5 rounded-xl bg-indigo-50 text-indigo-900 font-semibold text-xs transition text-left hover:bg-indigo-100/70">
                 <div class="flex items-center gap-2.5">
                   <div class="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-600 flex items-center justify-center flex-shrink-0">
@@ -566,7 +566,7 @@
         
         <div class="flex flex-wrap items-center gap-3">
           <!-- ToDo View Mode Dropdown Container (ドロップダウンメニュー) -->
-          <div class="relative" id="todo-view-dropdown-container">
+          <div class="relative z-30" id="todo-view-dropdown-container">
             <button type="button" onclick="toggleTodoViewDropdown(event)" id="todo-view-dropdown-btn" class="flex items-center gap-2.5 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs px-3.5 py-2 rounded-xl transition text-slate-800 text-xs font-semibold active:scale-95 group focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
               <div id="current-todo-view-icon-box" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
                 <i data-lucide="layout-grid" class="w-4 h-4"></i>
@@ -582,7 +582,7 @@
             </button>
 
             <!-- Dropdown Menu (PC・スマホの両方で画面からはみ出さない位置配置) -->
-            <div id="todo-view-dropdown-menu" class="hidden absolute top-[calc(100%+6px)] left-0 sm:left-auto sm:right-0 z-40 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 space-y-1">
+            <div id="todo-view-dropdown-menu" class="hidden absolute top-[calc(100%+6px)] left-0 sm:left-auto sm:right-0 z-50 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 space-y-1">
               <button type="button" onclick="selectTodoViewDropdown('list')" id="todo-opt-list" class="todo-view-opt w-full flex items-center justify-between p-2.5 rounded-xl bg-indigo-50 text-indigo-900 font-semibold text-xs transition text-left hover:bg-indigo-100/70">
                 <div class="flex items-center gap-2.5">
                   <div class="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-600 flex items-center justify-center flex-shrink-0">

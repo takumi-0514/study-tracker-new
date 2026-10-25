@@ -198,3 +198,10 @@ function setProblemSubTab(subTab) {
     renderProblemHistory();
   }
 }
+
+window.toggleDrawer = toggleDrawer;
+window.navigateFromDrawer = navigateFromDrawer;
+window.switchTab = switchTab;
+window.setHistorySubTab = setHistorySubTab;
+window.setProblemSubTab = setProblemSubTab;
+window.updateLiveClock = updateLiveClock;
