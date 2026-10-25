@@ -93,6 +93,11 @@
       if (mobTimeEl) mobTimeEl.innerText = formatMinutes(todayMins);
       if (mobGoalEl) mobGoalEl.innerText = `目標 ${dailyGoal}h (${percent}%)`;
 
+      const drawerTimeEl = document.getElementById('drawer-today-time');
+      const drawerGoalBar = document.getElementById('drawer-goal-bar');
+      if (drawerTimeEl) drawerTimeEl.innerText = formatMinutes(todayMins);
+      if (drawerGoalBar) drawerGoalBar.style.width = `${percent}%`;
+
       document.getElementById('kpi-streak').innerText = `${calculateStreak()}日`;
       document.getElementById('kpi-goal-streak').innerText = `${calculateGoalStreak()}日`;
 

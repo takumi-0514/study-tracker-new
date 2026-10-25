@@ -1,0 +1,8 @@
+{
+  "name": "StudyTracker Pro",
+  "description": "Study time management dashboard with sync capabilities",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

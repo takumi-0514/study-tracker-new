@@ -1,6 +1,12 @@
 // ==== ToDo・スケジュール機能 ====
 // ToDoリスト、カレンダー、時間割スケジュール、プリセット
 
+    const TODO_VIEW_CONFIG = {
+      list: { name: 'タスク一覧 (ToDo)', desc: '期限・科目別のToDo管理とチェック', icon: 'list' },
+      schedule: { name: '円グラフスケジュール', desc: '24時間の時間割を円グラフで直感把握', icon: 'pie-chart' },
+      calendar: { name: '月間カレンダー', desc: '日付ごとの学習予定と締切日を確認', icon: 'calendar' }
+    };
+
     function setTodoViewMode(mode) {
       todoViewMode = mode;
       const listBtn = document.getElementById('todo-view-list-btn');
@@ -20,6 +26,35 @@
         if (v) v.classList.add('hidden');
       });
 
+      // ドロップダウン内の選択状態更新
+      ['list', 'schedule', 'calendar'].forEach(m => {
+        const item = document.getElementById('todo-opt-' + m);
+        const check = document.getElementById('todo-check-' + m);
+        if (item) {
+          if (m === mode) {
+            item.className = "todo-view-opt w-full flex items-center justify-between p-2.5 rounded-xl bg-indigo-50 text-indigo-900 font-semibold text-xs transition text-left hover:bg-indigo-100/70";
+            if (check) check.classList.remove('hidden');
+          } else {
+            item.className = "todo-view-opt w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 text-xs transition text-left";
+            if (check) check.classList.add('hidden');
+          }
+        }
+      });
+
+      // 画面上のセレクターラベルと説明・アイコンの更新
+      const labelEl = document.getElementById('current-todo-view-label');
+      const descEl = document.getElementById('current-todo-view-desc');
+      const iconBox = document.getElementById('current-todo-view-icon-box');
+      if (labelEl && TODO_VIEW_CONFIG[mode]) {
+        labelEl.innerText = TODO_VIEW_CONFIG[mode].name;
+      }
+      if (descEl && TODO_VIEW_CONFIG[mode]) {
+        descEl.innerText = TODO_VIEW_CONFIG[mode].desc;
+      }
+      if (iconBox && TODO_VIEW_CONFIG[mode]) {
+        iconBox.innerHTML = `<i data-lucide="${TODO_VIEW_CONFIG[mode].icon}" class="w-4 h-4"></i>`;
+      }
+
       if (mode === 'list') {
         if (listBtn) listBtn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-600 shadow-sm font-semibold";
         if (listView) listView.classList.remove('hidden');
@@ -37,9 +72,56 @@
         if (calView) calView.classList.remove('hidden');
         if (formBoxList) formBoxList.classList.remove('hidden');
         if (formBoxSchedule) formBoxSchedule.classList.add('hidden');
+        if (typeof renderSubjectOptions === 'function') renderSubjectOptions();
         renderCalendarView();
       }
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
     }
+
+    // --- ToDo表示切替ドロップダウンの開閉 ---
+    window.toggleTodoViewDropdown = function(event) {
+      if (event && event.stopPropagation) event.stopPropagation();
+      const menu = document.getElementById('todo-view-dropdown-menu');
+      const chevron = document.getElementById('todo-view-chevron');
+      if (!menu) return;
+
+      const isHidden = menu.classList.contains('hidden');
+      if (typeof closeAllDropdowns === 'function') {
+        closeAllDropdowns();
+      }
+      if (isHidden) {
+        menu.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+      } else {
+        menu.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
+      }
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    };
+
+    window.closeTodoViewDropdown = function() {
+      const menu = document.getElementById('todo-view-dropdown-menu');
+      const chevron = document.getElementById('todo-view-chevron');
+      if (menu && !menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+      }
+      if (chevron) chevron.classList.remove('rotate-180');
+    };
+
+    // ドロップダウン内の項目を押したらビューを切り替えて閉じる
+    window.selectTodoViewDropdown = function(mode) {
+      setTodoViewMode(mode);
+      closeTodoViewDropdown();
+      const modeName = TODO_VIEW_CONFIG[mode]?.name || mode;
+      if (typeof showToast === 'function') {
+        showToast('「' + modeName + '」に切り替えました');
+      }
+    };
+
+    // 互換性のためのエイリアス
+    window.openTodoViewDrawer = window.toggleTodoViewDropdown;
+    window.closeTodoViewDrawer = window.closeTodoViewDropdown;
+    window.selectTodoViewAndClose = window.selectTodoViewDropdown;
 
     function handleAddTodo(e) {
       e.preventDefault();
@@ -790,7 +872,13 @@
 
         const dayCell = document.createElement('div');
         dayCell.className = `min-h-[85px] p-1.5 rounded-lg border flex flex-col justify-between transition cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/20 ${isToday ? 'bg-indigo-50/50 border-indigo-300' : 'bg-white border-slate-100'}`;
-        dayCell.onclick = () => openDayDetailModal(dateStr);
+        dayCell.onclick = () => {
+          const startInput = document.getElementById('todo-startdate-input');
+          const dueInput = document.getElementById('todo-duedate-input');
+          if (startInput) startInput.value = dateStr;
+          if (dueInput) dueInput.value = dateStr;
+          openDayDetailModal(dateStr);
+        };
 
         let todosHtml = '';
         dayTodos.slice(0, 3).forEach(t => {

@@ -6,15 +6,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-const netlifyFirebaseConfig = {
-  apiKey: "AIzaSyAY6j40lEWfskNXqCpDWKMiOuVsF1rAAH4",
-  authDomain: "study-tracker-pro-dashboard.firebaseapp.com",
-  projectId: "study-tracker-pro-dashboard",
-  storageBucket: "study-tracker-pro-dashboard.firebasestorage.app",
-  messagingSenderId: "12330692555",
-  appId: "1:12330692555:web:1baf87adf42ca3381d904e",
-  measurementId: "G-CQWW6MB1KK"
-};
+let netlifyFirebaseConfig = null;
 
 let db = null;
 let auth = null;
@@ -125,14 +117,25 @@ function markLocalClean(serverUpdatedAt) {
 
 async function initFirebase() {
   if (db) return db;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return null;
+  }
   try {
+    if (!netlifyFirebaseConfig) {
+      const response = await fetch('/api/firebase-config');
+      if (!response.ok) return null;
+      netlifyFirebaseConfig = await response.json();
+    }
+    if (!netlifyFirebaseConfig || !netlifyFirebaseConfig.apiKey) {
+      return null;
+    }
     const app = initializeApp(netlifyFirebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
     await signInAnonymously(auth);
     return db;
   } catch (e) {
-    console.error("[SYNC] Firebase init error:", e);
+    console.warn("[SYNC] Firebase offline or unavailable, running local-only mode:", e.message || e);
     return null;
   }
 }

@@ -1,50 +1,192 @@
 // ==== 初期化 ====
-// DOMContentLoaded時にUIを初期描画する
+// DOMContentLoaded時にUIを初期描画、Service WorkerとPWA/オフライン管理を行う
 
-    // Service Workerを登録(通知表示・オフラインキャッシュに使用)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => {
-          console.warn('[SW] registration failed:', err);
-        });
-      });
+// --- PWAインストール機能 ---
+let deferredInstallPrompt = null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+  window.navigator.standalone === true;
+const isIOSDevice = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+
+function updatePWAInstallUI() {
+  const desktopBtn = document.getElementById('pwa-install-btn-desktop');
+  const mobileBtn = document.getElementById('pwa-install-btn-mobile');
+
+  // すでにインストール済みの場合はボタンを非表示
+  if (isStandalone) {
+    if (desktopBtn) desktopBtn.classList.add('hidden');
+    if (mobileBtn) mobileBtn.classList.add('hidden');
+    return;
+  }
+
+  // Chromium / Android / Edge (deferredPromptが取得できた場合)
+  if (deferredInstallPrompt) {
+    if (desktopBtn) desktopBtn.classList.remove('hidden');
+    if (mobileBtn) mobileBtn.classList.remove('hidden');
+    return;
+  }
+
+  // iOS Safariの場合（ホーム画面追加案内を表示可能）
+  if (isIOSDevice) {
+    if (desktopBtn) desktopBtn.classList.remove('hidden');
+    if (mobileBtn) mobileBtn.classList.remove('hidden');
+    return;
+  }
+
+  // それ以外でプロンプト未準備の場合は非表示
+  if (desktopBtn) desktopBtn.classList.add('hidden');
+  if (mobileBtn) mobileBtn.classList.add('hidden');
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  updatePWAInstallUI();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  updatePWAInstallUI();
+  if (typeof window.showToast === 'function') {
+    window.showToast('アプリが正常にインストールされました！');
+  }
+});
+
+window.handlePWAInstallClick = async function() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') {
+      deferredInstallPrompt = null;
+      updatePWAInstallUI();
     }
+  } else if (isIOSDevice) {
+    openIOSInstallModal();
+  } else {
+    if (typeof window.showToast === 'function') {
+      window.showToast('ブラウザのメニューから「ホーム画面に追加」または「インストール」を選択してください');
+    }
+  }
+};
 
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      document.getElementById('manual-date').value = getTodayString();
-      document.getElementById('todo-startdate-input').value = getTodayString();
-      document.getElementById('todo-duedate-input').value = getTodayString();
-      document.getElementById('goal-input').value = window.dailyGoal;
-      
-      const now = new Date();
-      now.setHours(now.getHours() + 1);
-      const hoursStr = String(now.getHours()).padStart(2, '0');
-      const minsStr = String(now.getMinutes()).padStart(2, '0');
-      document.getElementById('target-time-input').value = `${hoursStr}:${minsStr}`;
+window.openIOSInstallModal = function() {
+  const modal = document.getElementById('ios-install-modal');
+  if (modal) modal.classList.remove('hidden');
+};
 
-      renderSubjectOptions();
-      renderSubjectList();
-      updateDashboardData();
-      renderTodoList();
-      renderProblemHistory();
-      renderCustomScheduleTasksList();
-      renderSchedulePresetsList();
-      
-      if (window.subjects.length > 0) {
-        document.getElementById('timer-subject-select').value = window.subjects[0].id;
-        document.getElementById('prob-subject-select').value = window.subjects[0].id;
-      }
-      setTimerMode('stopwatch');
+window.closeIOSInstallModal = function() {
+  const modal = document.getElementById('ios-install-modal');
+  if (modal) modal.classList.add('hidden');
+};
 
-      setInterval(updateLiveClock, 1000);
-      updateLiveClock();
+// --- オンライン/オフライン接続状態の検知 ---
+function updateNetworkStatus(notify = false) {
+  const offlineBanner = document.getElementById('offline-indicator');
+  const isOnline = navigator.onLine;
 
-      const probInput = document.getElementById('problem-name-input');
-      if (probInput) {
-        probInput.addEventListener('input', checkProblemComparison);
-      }
+  if (!isOnline) {
+    if (offlineBanner) offlineBanner.classList.remove('hidden');
+    if (notify && typeof window.showToast === 'function') {
+      window.showToast('オフラインになりました。データはローカルに保存されます。');
+    }
+  } else {
+    if (offlineBanner) offlineBanner.classList.add('hidden');
+    if (notify && typeof window.showToast === 'function') {
+      window.showToast('オンラインに復帰しました。');
+    }
+  }
+}
 
-      // 既存データで既に条件を満たしている実績がないか、起動時に一度チェックする
-      if (typeof checkAchievements === 'function') checkAchievements();
-    });
+window.addEventListener('online', () => updateNetworkStatus(true));
+window.addEventListener('offline', () => updateNetworkStatus(true));
+
+// --- Service Worker 登録 ---
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(reg => {
+        console.log('[SW] Registered successfully, scope:', reg.scope);
+        // 更新チェック
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[SW] New version available.');
+              }
+            });
+          }
+        });
+      })
+      .catch(err => {
+        console.warn('[SW] Registration failed:', err);
+      });
+  });
+}
+
+// --- DOMContentLoaded 初期描画 ---
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    lucide.createIcons();
+  }
+
+  // 接続状況の初期判定
+  updateNetworkStatus(false);
+  updatePWAInstallUI();
+
+  const manualDate = document.getElementById('manual-date');
+  if (manualDate) manualDate.value = getTodayString();
+
+  const todoStart = document.getElementById('todo-startdate-input');
+  if (todoStart) todoStart.value = getTodayString();
+
+  const todoDue = document.getElementById('todo-duedate-input');
+  if (todoDue) todoDue.value = getTodayString();
+
+  const goalInput = document.getElementById('goal-input');
+  if (goalInput) goalInput.value = window.dailyGoal;
+  
+  const now = new Date();
+  now.setHours(now.getHours() + 1);
+  const hoursStr = String(now.getHours()).padStart(2, '0');
+  const minsStr = String(now.getMinutes()).padStart(2, '0');
+  const targetTimeInput = document.getElementById('target-time-input');
+  if (targetTimeInput) targetTimeInput.value = `${hoursStr}:${minsStr}`;
+
+  if (typeof renderSubjectOptions === 'function') renderSubjectOptions();
+  if (typeof renderSubjectList === 'function') renderSubjectList();
+  if (typeof updateDashboardData === 'function') updateDashboardData();
+  if (typeof renderTodoList === 'function') renderTodoList();
+  if (typeof renderProblemHistory === 'function') renderProblemHistory();
+  if (typeof renderCustomScheduleTasksList === 'function') renderCustomScheduleTasksList();
+  if (typeof renderSchedulePresetsList === 'function') renderSchedulePresetsList();
+  
+  if (window.subjects && window.subjects.length > 0) {
+    const timerSel = document.getElementById('timer-subject-select');
+    if (timerSel) timerSel.value = window.subjects[0].id;
+    const probSel = document.getElementById('prob-subject-select');
+    if (probSel) probSel.value = window.subjects[0].id;
+  }
+
+  if (typeof setTimerMode === 'function') {
+    setTimerMode('stopwatch');
+  }
+  if (typeof setTodoViewMode === 'function') {
+    setTodoViewMode('list');
+  }
+
+  setInterval(updateLiveClock, 1000);
+  updateLiveClock();
+
+  const probInput = document.getElementById('problem-name-input');
+  if (probInput && typeof checkProblemComparison === 'function') {
+    probInput.addEventListener('input', checkProblemComparison);
+  }
+
+  // 既存データで既に条件を満たしている実績がないかチェック
+  if (typeof checkAchievements === 'function') checkAchievements();
+
+  // アイコンの再生成（動的追加ボタン用）
+  if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    lucide.createIcons();
+  }
+});

@@ -1,6 +1,13 @@
 // ==== タイマー機能 ====
 // ストップウォッチ/カウントダウン/時刻アラーム/ポモドーロ、問題演習タイマー
 
+    const TIMER_MODE_CONFIG = {
+      stopwatch: { name: 'ストップウォッチ', desc: '0からスタートし学習経過時間を計測', icon: 'timer' },
+      timer: { name: 'タイマー (カウントダウン)', desc: '目標の分数を決めてカウントダウン', icon: 'hourglass' },
+      alarm: { name: '時刻指定アラーム', desc: '終了予定の時刻を指定して集中', icon: 'alarm-clock' },
+      pomodoro: { name: 'ポモドーロタイマー', desc: '集中と休憩を繰り返す学習法', icon: 'flame' }
+    };
+
     function setTimerMode(mode) {
       if (isTimerRunning) {
         showToast('タイマー停止後にモードを変更できます');
@@ -21,26 +28,51 @@
       pomoSettings.classList.add('hidden');
       loopStatus.classList.add('hidden');
 
-      stopwatchBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
-      timerBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
-      alarmBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
-      pomodoroBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+      if (stopwatchBtn) stopwatchBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+      if (timerBtn) timerBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+      if (alarmBtn) alarmBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+      if (pomodoroBtn) pomodoroBtn.className = "px-3.5 py-2 rounded-lg transition text-slate-600";
+
+      // ドロップダウン内の選択状態更新
+      ['stopwatch', 'timer', 'alarm', 'pomodoro'].forEach(m => {
+        const item = document.getElementById(`timer-opt-${m}`);
+        const check = document.getElementById(`timer-check-${m}`);
+        if (item) {
+          if (m === mode) {
+            item.className = "timer-mode-opt w-full flex items-center justify-between p-2.5 rounded-xl bg-indigo-50 text-indigo-900 font-semibold text-xs transition text-left hover:bg-indigo-100/70";
+            if (check) check.classList.remove('hidden');
+          } else {
+            item.className = "timer-mode-opt w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-slate-700 text-xs transition text-left";
+            if (check) check.classList.add('hidden');
+          }
+        }
+      });
+
+      // 画面上のセレクターラベルと説明の更新
+      const labelEl = document.getElementById('current-timer-mode-label');
+      const descEl = document.getElementById('current-timer-mode-desc');
+      if (labelEl && TIMER_MODE_CONFIG[mode]) {
+        labelEl.innerText = TIMER_MODE_CONFIG[mode].name;
+      }
+      if (descEl && TIMER_MODE_CONFIG[mode]) {
+        descEl.innerText = TIMER_MODE_CONFIG[mode].desc;
+      }
 
       if (mode === 'stopwatch') {
-        stopwatchBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
+        if (stopwatchBtn) stopwatchBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
         timerSeconds = 0;
       } else if (mode === 'timer') {
-        timerBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
+        if (timerBtn) timerBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
         normalPanel.classList.remove('hidden');
         const mins = parseInt(document.getElementById('normal-minutes-input').value) || 30;
         targetTimerSeconds = mins * 60;
         timerSeconds = targetTimerSeconds;
       } else if (mode === 'alarm') {
-        alarmBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
+        if (alarmBtn) alarmBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
         alarmPanel.classList.remove('hidden');
         updateAlarmTimerTarget();
       } else if (mode === 'pomodoro') {
-        pomodoroBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
+        if (pomodoroBtn) pomodoroBtn.className = "px-3.5 py-2 rounded-lg transition bg-white shadow-sm text-indigo-600 font-semibold";
         pomoSettings.classList.remove('hidden');
         
         pomoWorkMin = parseInt(document.getElementById('pomo-work-input').value) || 25;
@@ -59,7 +91,54 @@
       updateSaveButtonState();
       updateTimerDisplay();
       renderLapList();
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
     }
+
+    // --- タイマーモード選択ドロップダウンの開閉 ---
+    window.toggleTimerModeDropdown = function(event) {
+      if (event && event.stopPropagation) event.stopPropagation();
+      if (isTimerRunning) {
+        showToast('タイマー計測中はモードを変更できません');
+        return;
+      }
+      const menu = document.getElementById('timer-mode-dropdown-menu');
+      const chevron = document.getElementById('timer-mode-chevron');
+      if (!menu) return;
+
+      const isHidden = menu.classList.contains('hidden');
+      if (typeof closeAllDropdowns === 'function') {
+        closeAllDropdowns();
+      }
+      if (isHidden) {
+        menu.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+      } else {
+        menu.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
+      }
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    };
+
+    window.closeTimerModeDropdown = function() {
+      const menu = document.getElementById('timer-mode-dropdown-menu');
+      const chevron = document.getElementById('timer-mode-chevron');
+      if (menu && !menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+      }
+      if (chevron) chevron.classList.remove('rotate-180');
+    };
+
+    // ドロップダウン内の項目を押したらモードを切り替えて閉じる
+    window.selectTimerModeDropdown = function(mode) {
+      setTimerMode(mode);
+      closeTimerModeDropdown();
+      showToast(`「${TIMER_MODE_CONFIG[mode]?.name || mode}」に切り替えました`);
+    };
+
+    // 互換性のためのエイリアス
+    window.openTimerModeDrawer = window.toggleTimerModeDropdown;
+    window.closeTimerModeDrawer = window.closeTimerModeDropdown;
+    window.selectTimerModeAndClose = window.selectTimerModeDropdown;
 
     function updateNormalTimerInitial() {
       if (!isTimerRunning && timerMode === 'timer' && !hasTimerStartedEver) {
@@ -271,9 +350,38 @@
       }, 5000);
     }
 
+    function playBeepFallbackTone() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = alarmAudioContext || new AudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+
+        // 3回のビープ音 (ピ・ピ・ピ)
+        [0, 0.25, 0.5, 0.75].forEach(delay => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime + delay); // A5
+          gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.18);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + delay);
+          osc.stop(ctx.currentTime + delay + 0.2);
+        });
+        console.log("[AUDIO] Played synthetic beep fallback tone");
+      } catch (e) {
+        console.warn("[AUDIO] Beep fallback failed:", e);
+      }
+    }
+
     function playAlarmSoundFallback() {
       const audio = document.getElementById('alarm-sound');
-      if (!audio) return;
+      if (!audio) {
+        playBeepFallbackTone();
+        return;
+      }
 
       audio.muted = false;
       audio.volume = 1;
@@ -287,15 +395,11 @@
           audioUnlocked = true;
           console.log("[AUDIO] alarm started via HTML Audio");
         }).catch(e => {
-          console.warn("[AUDIO] alarm play blocked:", e);
-          try {
-            audio.load();
-            audio.currentTime = 0;
-            audio.play().catch(err2 =>
-              console.warn("[AUDIO] alarm retry failed:", err2)
-            );
-          } catch (retryErr) {}
+          console.warn("[AUDIO] alarm play blocked, using synthetic tone:", e);
+          playBeepFallbackTone();
         });
+      } else {
+        playBeepFallbackTone();
       }
     }
 

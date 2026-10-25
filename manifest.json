@@ -1,15 +1,32 @@
 {
-  "name": "StudyTracker Pro",
+  "id": "/",
+  "name": "StudyTracker Pro - 勉強時間管理",
   "short_name": "StudyTracker",
-  "start_url": "./index.html",
+  "description": "タイマー、ToDo管理、学習記録をオフラインでも快適に使える勉強時間管理アプリ",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "./study_timer.png",
-      "sizes": "192x192 512x512",
-      "type": "image/png"
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
