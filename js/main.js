@@ -81,19 +81,7 @@ window.closeIOSInstallModal = function() {
 // --- オンライン/オフライン接続状態の検知 ---
 function updateNetworkStatus(notify = false) {
   const offlineBanner = document.getElementById('offline-indicator');
-  const isOnline = navigator.onLine;
-
-  if (!isOnline) {
-    if (offlineBanner) offlineBanner.classList.remove('hidden');
-    if (notify && typeof window.showToast === 'function') {
-      window.showToast('オフラインになりました。データはローカルに保存されます。');
-    }
-  } else {
-    if (offlineBanner) offlineBanner.classList.add('hidden');
-    if (notify && typeof window.showToast === 'function') {
-      window.showToast('オンラインに復帰しました。');
-    }
-  }
+  if (offlineBanner) offlineBanner.classList.add('hidden');
 }
 
 let swRegistration = null;
