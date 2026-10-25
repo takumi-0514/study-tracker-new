@@ -96,22 +96,43 @@ function updateNetworkStatus(notify = false) {
   }
 }
 
-window.addEventListener('online', () => updateNetworkStatus(true));
+let swRegistration = null;
+
+function checkForSWUpdate() {
+  if (swRegistration && typeof swRegistration.update === 'function') {
+    swRegistration.update().catch(err => {
+      console.warn('[SW] Update check error:', err);
+    });
+  }
+}
+
+window.addEventListener('online', () => {
+  updateNetworkStatus(true);
+  checkForSWUpdate();
+  if (typeof initFirebase === 'function') {
+    initFirebase();
+  }
+});
 window.addEventListener('offline', () => updateNetworkStatus(true));
 
-// --- Service Worker 登録 ---
+// --- Service Worker 登録 & 更新監視 ---
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then(reg => {
+        swRegistration = reg;
         console.log('[SW] Registered successfully, scope:', reg.scope);
-        // 更新チェック
+
+        // 新しいWorkerがインストールされた時の監視
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                 console.log('[SW] New version available.');
+                if (typeof window.showToast === 'function') {
+                  window.showToast('アプリの新バージョンを検出しました。再読み込みで最新版が適用されます。');
+                }
               }
             });
           }
@@ -120,6 +141,24 @@ if ('serviceWorker' in navigator) {
       .catch(err => {
         console.warn('[SW] Registration failed:', err);
       });
+  });
+
+  // 画面表示・復帰時 (visibilitychange) に更新を確認
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkForSWUpdate();
+    }
+  });
+
+  // 新しいSWがページをコントロール開始したときの通知
+  let isRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      if (typeof window.showToast === 'function') {
+        window.showToast('最新版に更新されました！');
+      }
+    }
   });
 }
 

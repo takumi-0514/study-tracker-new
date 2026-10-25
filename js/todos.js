@@ -524,47 +524,62 @@
 
       const canvasEl = document.getElementById(canvasId);
       if (!canvasEl) return;
+
+      if (typeof Chart === 'undefined') {
+        console.warn('[Todos] Chart.js is not loaded, skipping pie chart render');
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+        return;
+      }
+
       const ctx = canvasEl.getContext('2d');
 
       if (dayType === 'today') {
-        if (todayPieChartInstance) todayPieChartInstance.destroy();
+        if (todayPieChartInstance) {
+          try { todayPieChartInstance.destroy(); } catch (e) {}
+        }
       } else {
-        if (tomorrowPieChartInstance) tomorrowPieChartInstance.destroy();
+        if (tomorrowPieChartInstance) {
+          try { tomorrowPieChartInstance.destroy(); } catch (e) {}
+        }
       }
 
-      const chartObj = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: backgroundColors,
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  const mins = context.parsed;
-                  const h = Math.floor(mins / 60);
-                  const m = mins % 60;
-                  return ` ${context.label}: 約 ${h}時間 ${m > 0 ? m + '分' : ''}`;
+      try {
+        const chartObj = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: data,
+              backgroundColor: backgroundColors,
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const mins = context.parsed;
+                    const h = Math.floor(mins / 60);
+                    const m = mins % 60;
+                    return ` ${context.label}: 約 ${h}時間 ${m > 0 ? m + '分' : ''}`;
+                  }
                 }
               }
             }
           }
-        }
-      });
+        });
 
-      if (dayType === 'today') todayPieChartInstance = chartObj;
-      else tomorrowPieChartInstance = chartObj;
+        if (dayType === 'today') todayPieChartInstance = chartObj;
+        else tomorrowPieChartInstance = chartObj;
+      } catch (err) {
+        console.warn('[Todos] Error creating schedule pie chart:', err);
+      }
 
-      lucide.createIcons();
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
     }
 
     function openScheduleModal(dayType, editId = null) {

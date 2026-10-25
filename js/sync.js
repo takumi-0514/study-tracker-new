@@ -121,13 +121,19 @@ async function initFirebase() {
     return null;
   }
   try {
-    if (!netlifyFirebaseConfig) {
-      const response = await fetch('/api/firebase-config');
-      if (!response.ok) return null;
-      netlifyFirebaseConfig = await response.json();
-    }
     if (!netlifyFirebaseConfig || !netlifyFirebaseConfig.apiKey) {
-      return null;
+      const response = await fetch('/api/firebase-config');
+      if (!response.ok) {
+        netlifyFirebaseConfig = null;
+        return null;
+      }
+      const config = await response.json();
+      if (config && config.apiKey) {
+        netlifyFirebaseConfig = config;
+      } else {
+        netlifyFirebaseConfig = null;
+        return null;
+      }
     }
     const app = initializeApp(netlifyFirebaseConfig);
     auth = getAuth(app);

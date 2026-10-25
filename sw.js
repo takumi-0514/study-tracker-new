@@ -1,12 +1,17 @@
 /**
  * StudyTracker Pro - Service Worker
- * 高度なオフラインキャッシュ戦略 (Cache-First / Stale-While-Revalidate)
+ * 堅牢なオフラインキャッシュ戦略
+ * - アプリ本体 & 必須CDNの完全アトミック保存 (1つでも失敗なら古い版を維持)
+ * - Safari向け Range リクエスト (206 Partial Content) 対応
+ * - Firebase設定の前回控え保持 & 未取得時503返却
+ * - Firestore等の外部通信バイパス
  */
 
-const CACHE_VERSION = 'v9';
-const CACHE_STATIC = `study-tracker-static-${CACHE_VERSION}`;
-const CACHE_DYNAMIC = `study-tracker-dynamic-${CACHE_VERSION}`;
-const CACHE_FONTS = `study-tracker-fonts-${CACHE_VERSION}`;
+// BUILD_ID は server.js 配信時に動的注入されます。静的ホスティング時は手動で値を変更してください。
+const BUILD_ID = 'static-v10';
+const CACHE_VERSION = BUILD_ID;
+const CACHE_NAME = `study-tracker-${CACHE_VERSION}`;
+const BACKUP_CACHE_NAME = 'study-tracker-firebase-backup';
 
 // 必須コアアセット (アプリシェル)
 const CORE_ASSETS = [
@@ -31,7 +36,7 @@ const CORE_ASSETS = [
   '/js/main.js'
 ];
 
-// 外部CDNアセット
+// 必須外部CDNアセット
 const EXTERNAL_CDN_ASSETS = [
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/chart.js',
@@ -42,47 +47,27 @@ const EXTERNAL_CDN_ASSETS = [
   'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js'
 ];
 
-// --- インストール処理 ---
+// --- インストール処理 (完全アトミック) ---
 self.addEventListener('install', event => {
   event.waitUntil(
     (async () => {
-      // 1. 同一オリジンのコアアセットをキャッシュ
-      const staticCache = await caches.open(CACHE_STATIC);
-      try {
-        await staticCache.addAll(CORE_ASSETS);
-      } catch (err) {
-        console.warn('[SW] Core precache partial fail:', err);
-        // 個別フォールバックで取得可能なものを保存
-        await Promise.allSettled(
-          CORE_ASSETS.map(url =>
-            fetch(url, { cache: 'reload' })
-              .then(res => {
-                if (res.ok) return staticCache.put(url, res);
-              })
-              .catch(() => {})
-          )
-        );
-      }
+      const cache = await caches.open(CACHE_NAME);
+      const allUrls = [...CORE_ASSETS, ...EXTERNAL_CDN_ASSETS];
 
-      // 2. 外部CDNリソースを安全に事前フェッチ＆キャッシュ
-      const dynamicCache = await caches.open(CACHE_DYNAMIC);
-      await Promise.allSettled(
-        EXTERNAL_CDN_ASSETS.map(url =>
-          fetch(url, { mode: 'cors' })
-            .then(res => {
-              if (res.ok || res.type === 'opaque') {
-                return dynamicCache.put(url, res);
-              }
-            })
-            .catch(() => {
-              // no-cors で再試行
-              return fetch(url, { mode: 'no-cors' })
-                .then(res => dynamicCache.put(url, res))
-                .catch(() => {});
-            })
-        )
+      // すべてのアセットを並行フェッチ。1つでも失敗すればPromise.allがrejectし、
+      // インストールは失敗扱いとなるため、中途半端な壊れたキャッシュで古い版を上書きしません。
+      await Promise.all(
+        allUrls.map(async url => {
+          const req = new Request(url, { cache: 'reload' });
+          const res = await fetch(req);
+          if (!res.ok && res.type !== 'opaque') {
+            throw new Error(`[SW] Precache failed: ${url} (status: ${res.status})`);
+          }
+          await cache.put(url, res);
+        })
       );
 
+      console.log(`[SW] All assets precached successfully for ${CACHE_NAME}`);
       return self.skipWaiting();
     })()
   );
@@ -92,11 +77,11 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     (async () => {
-      const allowedCaches = [CACHE_STATIC, CACHE_DYNAMIC, CACHE_FONTS];
       const keyList = await caches.keys();
       await Promise.all(
         keyList.map(key => {
-          if (!allowedCaches.includes(key)) {
+          // 現在のキャッシュとFirebase設定控え以外の古いキャッシュを削除
+          if (key.startsWith('study-tracker-') && key !== CACHE_NAME && key !== BACKUP_CACHE_NAME) {
             console.log('[SW] Deleting old cache:', key);
             return caches.delete(key);
           }
@@ -120,7 +105,39 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-// --- フェッチ処理（リクエスト振り分け） ---
+// --- Safari向け Range リクエスト処理 (206 Partial Content) ---
+async function handleRangeRequest(request, cachedResponse) {
+  const rangeHeader = request.headers.get('range');
+  if (!rangeHeader) return cachedResponse;
+
+  const arrayBuffer = await cachedResponse.arrayBuffer();
+  const total = arrayBuffer.byteLength;
+  const parts = rangeHeader.replace(/bytes=/, '').split('-');
+  const start = parseInt(parts[0], 10);
+  const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+
+  if (isNaN(start) || start >= total || end >= total || start > end) {
+    return new Response(null, {
+      status: 416,
+      statusText: 'Range Not Satisfiable',
+      headers: { 'Content-Range': `bytes */${total}` }
+    });
+  }
+
+  const sliced = arrayBuffer.slice(start, end + 1);
+  return new Response(sliced, {
+    status: 206,
+    statusText: 'Partial Content',
+    headers: {
+      'Content-Type': cachedResponse.headers.get('Content-Type') || 'audio/mpeg',
+      'Content-Range': `bytes ${start}-${end}/${total}`,
+      'Content-Length': String(sliced.byteLength),
+      'Accept-Ranges': 'bytes'
+    }
+  });
+}
+
+// --- フェッチ処理 ---
 self.addEventListener('fetch', event => {
   const request = event.request;
 
@@ -129,13 +146,49 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url);
 
-  // 1. APIエンドポイント (/api/*)
-  // ネットワーク優先。オフライン時は空のJSONを返してフロントエンドのクラッシュを防ぐ
-  if (url.pathname.startsWith('/api/')) {
+  // 1. /api/firebase-config の処理
+  // 有効な設定は控えとして保存。オフライン時は控えを返すが、控えも無ければ503を返す (空の{} 200ではない)
+  if (url.origin === location.origin && url.pathname === '/api/firebase-config') {
+    event.respondWith(
+      (async () => {
+        const backupCache = await caches.open(BACKUP_CACHE_NAME);
+        try {
+          const networkRes = await fetch(request);
+          if (networkRes.ok) {
+            const clone = networkRes.clone();
+            const data = await clone.json();
+            // 有効な apiKey が含まれている場合のみ控えとして保存
+            if (data && data.apiKey) {
+              await backupCache.put(request, networkRes.clone());
+            }
+            return networkRes;
+          }
+        } catch (err) {
+          // ネットワーク障害・オフライン
+        }
+
+        // 前回の控えがあるか確認
+        const cachedRes = await backupCache.match(request);
+        if (cachedRes) {
+          return cachedRes;
+        }
+
+        // 控えも存在しない場合は 503 Service Unavailable を返す
+        return new Response(JSON.stringify({ error: 'Service Unavailable (Offline)' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })()
+    );
+    return;
+  }
+
+  // 2. その他の同一オリジン API (/api/*)
+  if (url.origin === location.origin && url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() => {
-        return new Response(JSON.stringify({}), {
-          status: 200,
+        return new Response(JSON.stringify({ error: 'Offline' }), {
+          status: 503,
           headers: { 'Content-Type': 'application/json' }
         });
       })
@@ -143,111 +196,82 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 2. Google Fonts (fonts.googleapis.com, fonts.gstatic.com)
-  // Cache First 戦略
-  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+  // 3. Firestore, Firebase Auth, Google APIs などの外部通信は SW は一切関与しない (完全バイパス)
+  const isCdn = EXTERNAL_CDN_ASSETS.some(cdnUrl => request.url.startsWith(cdnUrl.split('?')[0]));
+  if (url.origin !== location.origin && !isCdn) {
+    return; // 通信に関与せずブラウザ本来の通信に任せる
+  }
+
+  // 4. Safari向け Range リクエスト (音声・動画等)
+  if (request.headers.has('range')) {
     event.respondWith(
-      caches.open(CACHE_FONTS).then(async cache => {
-        const cached = await cache.match(request);
-        if (cached) return cached;
-        try {
-          const networkResponse = await fetch(request);
-          if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
-            cache.put(request, networkResponse.clone());
-          }
-          return networkResponse;
-        } catch (err) {
-          return cached || new Response('', { status: 408 });
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(request, { ignoreSearch: true });
+        if (cached) {
+          return handleRangeRequest(request, cached);
         }
-      })
+        return fetch(request);
+      })()
     );
     return;
   }
 
-  // 3. ナビゲーションリクエスト（HTML画面表示）
-  // Stale-While-Revalidate / Cache First with Network Fallback
-  // オフラインでも即座に index.html を返す
+  // 5. ナビゲーションリクエスト (HTML表示)
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        const staticCache = await caches.open(CACHE_STATIC);
-        const cachedIndex = (await staticCache.match(request)) ||
-                            (await staticCache.match('/index.html')) ||
-                            (await staticCache.match('/'));
+        const cache = await caches.open(CACHE_NAME);
+        const cachedIndex = (await cache.match(request)) ||
+                            (await cache.match('/index.html')) ||
+                            (await cache.match('/'));
 
-        const networkFetch = fetch(request).then(async networkResponse => {
-          if (networkResponse && networkResponse.ok) {
-            staticCache.put(request, networkResponse.clone());
-            staticCache.put('/index.html', networkResponse.clone());
+        // バックグラウンドで最新のHTMLを取得・更新
+        const networkFetch = fetch(request).then(async networkRes => {
+          if (networkRes && networkRes.ok) {
+            cache.put(request, networkRes.clone());
+            cache.put('/index.html', networkRes.clone());
           }
-          return networkResponse;
-        }).catch(err => {
-          console.log('[SW] Navigation fetch offline, using cached index');
-          return cachedIndex;
-        });
+          return networkRes;
+        }).catch(() => cachedIndex);
 
-        // キャッシュがあれば即時返却し、裏で最新化（オフラインでも超高速表示）
         return cachedIndex || networkFetch;
       })()
     );
     return;
   }
 
-  // 4. 外部CDNスクリプト / スタイル (Tailwind, Chart.js, Lucide, Firebase)
-  // Cache First 戦略 (キャッシュにあれば即座に返却、無ければネットワークから取得・キャッシュ)
-  if (
-    url.hostname.includes('cdn.tailwindcss.com') ||
-    url.hostname.includes('jsdelivr.net') ||
-    url.hostname.includes('unpkg.com') ||
-    url.hostname.includes('gstatic.com')
-  ) {
-    event.respondWith(
-      caches.open(CACHE_DYNAMIC).then(async cache => {
-        const cached = await cache.match(request);
-        if (cached) {
-          // バックグラウンドで更新確認
-          fetch(request).then(res => {
-            if (res && (res.ok || res.type === 'opaque')) {
-              cache.put(request, res);
+  // 6. 一般リソース (JS, CSS, 画像, 必須CDN) -> Cache First / Stale-While-Revalidate
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(request, { ignoreSearch: true });
+
+      if (cached) {
+        // バックグラウンドで更新を試みる (オンライン時のみ)
+        if (navigator.onLine) {
+          fetch(request).then(networkRes => {
+            if (networkRes && (networkRes.ok || networkRes.type === 'opaque')) {
+              cache.put(request, networkRes);
             }
           }).catch(() => {});
-          return cached;
         }
+        return cached;
+      }
 
-        try {
-          const networkResponse = await fetch(request);
-          if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
-            cache.put(request, networkResponse.clone());
-          }
-          return networkResponse;
-        } catch (err) {
-          return cached || Promise.reject(err);
+      // キャッシュにない場合はネットワークから取得
+      try {
+        const networkRes = await fetch(request);
+        if (networkRes && (networkRes.ok || networkRes.type === 'opaque')) {
+          cache.put(request, networkRes.clone());
         }
-      })
-    );
-    return;
-  }
-
-  // 5. その他の同一オリジンリソース（JSファイル、画像、タイマー音声など）
-  // Stale-While-Revalidate 戦略
-  event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then(async cachedResponse => {
-      const fetchPromise = fetch(request).then(async networkResponse => {
-        if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
-          const cache = await caches.open(CACHE_STATIC);
-          cache.put(request, networkResponse.clone());
+        return networkRes;
+      } catch (err) {
+        if (request.mode === 'navigate') {
+          return (await cache.match('/index.html')) || (await cache.match('/'));
         }
-        return networkResponse;
-      }).catch(err => {
-        // オフライン時のフェッチエラー
-        if (cachedResponse) return cachedResponse;
-        // もしHTMLリクエストならindex.htmlを返す
-        if (request.headers.get('accept')?.includes('text/html')) {
-          return caches.match('/index.html');
-        }
-      });
-
-      return cachedResponse || fetchPromise;
-    })
+        throw err;
+      }
+    })()
   );
 });

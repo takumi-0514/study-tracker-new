@@ -101,8 +101,16 @@
       document.getElementById('kpi-streak').innerText = `${calculateStreak()}日`;
       document.getElementById('kpi-goal-streak').innerText = `${calculateGoalStreak()}日`;
 
-      renderMainChart();
-      renderSubjectChart();
+      try {
+        renderMainChart();
+      } catch (e) {
+        console.warn('[Dashboard] renderMainChart skipped:', e.message || e);
+      }
+      try {
+        renderSubjectChart();
+      } catch (e) {
+        console.warn('[Dashboard] renderSubjectChart skipped:', e.message || e);
+      }
       renderWeeklyReport();
       renderTrendsReport();
       if (typeof renderSubjectList === 'function') renderSubjectList();
@@ -398,7 +406,13 @@
     }
 
     function renderMainChart() {
-      const ctx = document.getElementById('weeklyChart').getContext('2d');
+      if (typeof Chart === 'undefined') {
+        console.warn('[Dashboard] Chart.js is not loaded, skipping weekly chart');
+        return;
+      }
+      const canvas = document.getElementById('weeklyChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
       let labels = [];
       let timeKeys = [];
 
@@ -442,26 +456,38 @@
         return { label: sub.name, data: dataArr, backgroundColor: sub.color, borderRadius: 4 };
       });
 
-      if (weeklyChartInstance) weeklyChartInstance.destroy();
-      weeklyChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: labels, datasets: datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true, font: { size: 11 } } }
-          },
-          scales: {
-            x: { stacked: true, grid: { display: false } },
-            y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: value => value + ' h' } }
+      if (weeklyChartInstance) {
+        try { weeklyChartInstance.destroy(); } catch (e) {}
+      }
+      try {
+        weeklyChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: { labels: labels, datasets: datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true, font: { size: 11 } } }
+            },
+            scales: {
+              x: { stacked: true, grid: { display: false } },
+              y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: value => value + ' h' } }
+            }
           }
-        }
-      });
+        });
+      } catch (err) {
+        console.warn('[Dashboard] Error creating weeklyChart:', err);
+      }
     }
 
     function renderSubjectChart() {
-      const ctx = document.getElementById('subjectChart').getContext('2d');
+      if (typeof Chart === 'undefined') {
+        console.warn('[Dashboard] Chart.js is not loaded, skipping subject chart');
+        return;
+      }
+      const canvas = document.getElementById('subjectChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
       const subjectTotals = {};
       subjects.forEach(s => subjectTotals[s.id] = 0);
       logs.forEach(l => {
@@ -477,14 +503,20 @@
         }
       });
 
-      if (subjectChartInstance) subjectChartInstance.destroy();
+      if (subjectChartInstance) {
+        try { subjectChartInstance.destroy(); } catch (e) {}
+      }
       if (data.length === 0) return;
 
-      subjectChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-      });
+      try {
+        subjectChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+      } catch (err) {
+        console.warn('[Dashboard] Error creating subjectChart:', err);
+      }
     }
 
     function setHistoryFilter(filter) {
