@@ -17,6 +17,11 @@ app.get('/api/firebase-config', (req, res) => {
   });
 });
 
+// Favicon endpoint (serve PNG image to prevent HTML fallback for browsers)
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(__dirname, 'pwa-192x192.png'));
+});
+
 const fs = require('fs');
 const crypto = require('crypto');
 

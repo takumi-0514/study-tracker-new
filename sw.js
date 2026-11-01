@@ -17,6 +17,7 @@ const BACKUP_CACHE_NAME = 'study-tracker-firebase-backup';
 const CORE_ASSETS = [
   '/',
   '/index.html',
+  '/favicon.ico',
   '/manifest.json',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
