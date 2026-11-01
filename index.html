@@ -81,12 +81,6 @@
           <span>科目・目標設定</span>
         </button>
       </nav>
-
-      <!-- PWA Install Button (Desktop) -->
-      <button id="pwa-install-btn-desktop" onclick="handlePWAInstallClick()" class="hidden mt-4 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-semibold shadow-md transition transform active:scale-95">
-        <i data-lucide="download" class="w-4 h-4"></i>
-        <span>アプリをインストール</span>
-      </button>
     </div>
 
     <!-- Daily Quick Summary & Live Clock -->
@@ -123,10 +117,6 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button id="pwa-install-btn-mobile" onclick="handlePWAInstallClick()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-sm">
-          <i data-lucide="download" class="w-3.5 h-3.5"></i>
-          <span>インストール</span>
-        </button>
         <div class="text-right">
           <div class="text-[10px] text-indigo-300 font-medium" id="mobile-sidebar-date-text">8/7(金)</div>
           <div class="text-xs font-mono font-bold text-slate-200" id="mobile-sidebar-clock-text">12:00:00</div>
@@ -1340,28 +1330,7 @@
 
 
 
-  <!-- iOS PWA Install Guide Modal -->
-  <div id="ios-install-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-    <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl text-slate-800 space-y-4">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-        <h3 class="font-bold text-base flex items-center gap-2">
-          <i data-lucide="smartphone" class="w-5 h-5 text-indigo-600"></i>
-          <span>iPhone / iPad に追加</span>
-        </h3>
-        <button onclick="closeIOSInstallModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg p-1">&times;</button>
-      </div>
-      <p class="text-xs text-slate-600 leading-relaxed">
-        Safariの画面下部にある <strong>共有ボタン</strong>（四角から上矢印のアイコン）をタップし、メニューから <strong>「ホーム画面に追加」</strong> を選択すると、オフラインでもフルスクリーンで起動できるようになります。
-      </p>
-      <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800 flex items-center gap-2">
-        <i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-600 flex-shrink-0"></i>
-        <span>通信不要でタイマーやToDoをそのまま使用可能</span>
-      </div>
-      <button onclick="closeIOSInstallModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl text-xs transition">
-        閉じる
-      </button>
-    </div>
-  </div>
+
 
   <audio id="alarm-sound" src="timer-sound.mp3" preload="auto"></audio>
 

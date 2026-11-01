@@ -1,82 +1,8 @@
 // ==== 初期化 ====
 // DOMContentLoaded時にUIを初期描画、Service WorkerとPWA/オフライン管理を行う
 
-// --- PWAインストール機能 ---
-let deferredInstallPrompt = null;
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-  window.navigator.standalone === true;
-const isIOSDevice = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-
-function updatePWAInstallUI() {
-  const desktopBtn = document.getElementById('pwa-install-btn-desktop');
-  const mobileBtn = document.getElementById('pwa-install-btn-mobile');
-
-  // すでにインストール済みの場合はボタンを非表示
-  if (isStandalone) {
-    if (desktopBtn) desktopBtn.classList.add('hidden');
-    if (mobileBtn) mobileBtn.classList.add('hidden');
-    return;
-  }
-
-  // Chromium / Android / Edge (deferredPromptが取得できた場合)
-  if (deferredInstallPrompt) {
-    if (desktopBtn) desktopBtn.classList.remove('hidden');
-    if (mobileBtn) mobileBtn.classList.remove('hidden');
-    return;
-  }
-
-  // iOS Safariの場合（ホーム画面追加案内を表示可能）
-  if (isIOSDevice) {
-    if (desktopBtn) desktopBtn.classList.remove('hidden');
-    if (mobileBtn) mobileBtn.classList.remove('hidden');
-    return;
-  }
-
-  // それ以外でプロンプト未準備の場合は非表示
-  if (desktopBtn) desktopBtn.classList.add('hidden');
-  if (mobileBtn) mobileBtn.classList.add('hidden');
-}
-
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  updatePWAInstallUI();
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredInstallPrompt = null;
-  updatePWAInstallUI();
-  if (typeof window.showToast === 'function') {
-    window.showToast('アプリが正常にインストールされました！');
-  }
-});
-
-window.handlePWAInstallClick = async function() {
-  if (deferredInstallPrompt) {
-    deferredInstallPrompt.prompt();
-    const { outcome } = await deferredInstallPrompt.userChoice;
-    if (outcome === 'accepted') {
-      deferredInstallPrompt = null;
-      updatePWAInstallUI();
-    }
-  } else if (isIOSDevice) {
-    openIOSInstallModal();
-  } else {
-    if (typeof window.showToast === 'function') {
-      window.showToast('ブラウザのメニューから「ホーム画面に追加」または「インストール」を選択してください');
-    }
-  }
-};
-
-window.openIOSInstallModal = function() {
-  const modal = document.getElementById('ios-install-modal');
-  if (modal) modal.classList.remove('hidden');
-};
-
-window.closeIOSInstallModal = function() {
-  const modal = document.getElementById('ios-install-modal');
-  if (modal) modal.classList.add('hidden');
-};
+// --- PWA設定 ---
+function updatePWAInstallUI() {}
 
 // --- オンライン/オフライン接続状態の検知 ---
 function updateNetworkStatus(notify = false) {
