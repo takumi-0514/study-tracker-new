@@ -106,7 +106,7 @@ window.addEventListener('offline', () => updateNetworkStatus(true));
 // --- Service Worker 登録 & 更新監視 ---
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
       .then(reg => {
         swRegistration = reg;
         console.log('[SW] Registered successfully, scope:', reg.scope);

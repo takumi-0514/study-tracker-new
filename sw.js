@@ -15,26 +15,26 @@ const BACKUP_CACHE_NAME = 'study-tracker-firebase-backup';
 
 // 必須コアアセット (アプリシェル)
 const CORE_ASSETS = [
-  '/',
-  '/index.html',
-  '/favicon.ico',
-  '/manifest.json',
-  '/pwa-192x192.png',
-  '/pwa-512x512.png',
-  '/pwa-maskable-512x512.png',
-  '/apple-touch-icon.png',
-  '/study_timer.png',
-  '/timer-sound.mp3',
-  '/js/utils.js',
-  '/js/state.js',
-  '/js/sync.js',
-  '/js/ui.js',
-  '/js/timer.js',
-  '/js/todos.js',
-  '/js/dashboard.js',
-  '/js/subjects.js',
-  '/js/achievements.js',
-  '/js/main.js'
+  './',
+  './index.html',
+  './favicon.ico',
+  './manifest.json',
+  './pwa-192x192.png',
+  './pwa-512x512.png',
+  './pwa-maskable-512x512.png',
+  './apple-touch-icon.png',
+  './study_timer.png',
+  './timer-sound.mp3',
+  './js/utils.js',
+  './js/state.js',
+  './js/sync.js',
+  './js/ui.js',
+  './js/timer.js',
+  './js/todos.js',
+  './js/dashboard.js',
+  './js/subjects.js',
+  './js/achievements.js',
+  './js/main.js'
 ];
 
 // 必須外部CDNアセット
@@ -224,6 +224,8 @@ self.addEventListener('fetch', event => {
       (async () => {
         const cache = await caches.open(CACHE_NAME);
         const cachedIndex = (await cache.match(request)) ||
+                            (await cache.match('./index.html')) ||
+                            (await cache.match('./')) ||
                             (await cache.match('/index.html')) ||
                             (await cache.match('/'));
 
@@ -231,7 +233,7 @@ self.addEventListener('fetch', event => {
         const networkFetch = fetch(request).then(async networkRes => {
           if (networkRes && networkRes.ok) {
             cache.put(request, networkRes.clone());
-            cache.put('/index.html', networkRes.clone());
+            cache.put('./index.html', networkRes.clone());
           }
           return networkRes;
         }).catch(() => cachedIndex);
@@ -269,7 +271,7 @@ self.addEventListener('fetch', event => {
         return networkRes;
       } catch (err) {
         if (request.mode === 'navigate') {
-          return (await cache.match('/index.html')) || (await cache.match('/'));
+          return (await cache.match('./index.html')) || (await cache.match('./')) || (await cache.match('/index.html'));
         }
         throw err;
       }
