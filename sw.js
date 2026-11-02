@@ -45,7 +45,8 @@ const EXTERNAL_CDN_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
   'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js',
   'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js',
-  'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js'
+  'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js',
+  'https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js'
 ];
 
 // --- インストール処理 (完全アトミック) ---
@@ -147,9 +148,9 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url);
 
-  // 1. /api/firebase-config の処理
-  // 有効な設定は控えとして保存。オフライン時は控えを返すが、控えも無ければ503を返す (空の{} 200ではない)
-  if (url.origin === location.origin && url.pathname === '/api/firebase-config') {
+  // 1. /api/firebase-config の処理 (ルートおよびGitHub Pages等のサブパスに対応)
+  // 有効な設定は控えとして保存。オフライン時は控えを返すが、控えも無ければ503または静的ホスト用404を返す
+  if (url.origin === location.origin && (url.pathname === '/api/firebase-config' || url.pathname.endsWith('/api/firebase-config'))) {
     event.respondWith(
       (async () => {
         const backupCache = await caches.open(BACKUP_CACHE_NAME);
@@ -163,6 +164,13 @@ self.addEventListener('fetch', event => {
               await backupCache.put(request, networkRes.clone());
             }
             return networkRes;
+          }
+          if (networkRes.status === 404) {
+            // 静的ホスティング等でエンドポイントが存在しない場合
+            return new Response(JSON.stringify({ error: 'Endpoint not found on static host' }), {
+              status: 404,
+              headers: { 'Content-Type': 'application/json' }
+            });
           }
         } catch (err) {
           // ネットワーク障害・オフライン
@@ -185,7 +193,7 @@ self.addEventListener('fetch', event => {
   }
 
   // 2. その他の同一オリジン API (/api/*)
-  if (url.origin === location.origin && url.pathname.startsWith('/api/')) {
+  if (url.origin === location.origin && (url.pathname.startsWith('/api/') || url.pathname.includes('/api/'))) {
     event.respondWith(
       fetch(request).catch(() => {
         return new Response(JSON.stringify({ error: 'Offline' }), {

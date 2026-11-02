@@ -7,13 +7,13 @@ const PORT = 3000;
 // API endpoint for Firebase config
 app.get('/api/firebase-config', (req, res) => {
   res.json({
-    apiKey: process.env.FIREBASE_API_KEY,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.FIREBASE_APP_ID,
-    measurementId: process.env.FIREBASE_MEASUREMENT_ID
+    apiKey: process.env.FIREBASE_API_KEY || "AIzaSyAY6j40lEWfskNXqCpDWKMiOuVsF1rAAH4",
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || "study-tracker-pro-dashboard.firebaseapp.com",
+    projectId: process.env.FIREBASE_PROJECT_ID || "study-tracker-pro-dashboard",
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "study-tracker-pro-dashboard.firebasestorage.app",
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "12330692555",
+    appId: process.env.FIREBASE_APP_ID || "1:12330692555:web:1baf87adf42ca3381d904e",
+    measurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-CQWW6MB1KK"
   });
 });
 

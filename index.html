@@ -16,6 +16,16 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="StudyTracker">
 
+  <script>
+    // Suppress Tailwind Play CDN production warning in console
+    (function() {
+      const origWarn = console.warn;
+      console.warn = function(...args) {
+        if (typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) return;
+        origWarn.apply(console, args);
+      };
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -83,8 +93,17 @@
       </nav>
     </div>
 
-    <!-- Daily Quick Summary & Live Clock -->
+    <!-- Daily Quick Summary & Live Clock & Connection Status -->
     <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50 mt-6 space-y-3">
+      <!-- Firebase Online/Offline Connection Status -->
+      <div class="flex items-center justify-between pb-2.5 border-b border-slate-700/60">
+        <span class="text-[11px] text-slate-400 font-medium">接続状況</span>
+        <div id="desktop-firebase-status" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-400 border border-slate-700/60">
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+          <span>接続確認中...</span>
+        </div>
+      </div>
+
       <div>
         <div class="text-xs text-slate-400 font-medium mb-1">本日の学習時間</div>
         <div class="text-2xl font-bold text-indigo-300" id="sidebar-today-time">0h 0m</div>
@@ -228,18 +247,28 @@
         <span>閉じて学習画面に戻る</span>
       </button>
 
-      <!-- Today's progress inside drawer -->
-      <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
-        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
-          <span>本日の学習</span>
-          <span class="text-indigo-300 font-bold" id="drawer-today-time">0h 0m</span>
+      <!-- Connection Status & Today's progress inside drawer -->
+      <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50 space-y-2.5">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-700/60">
+          <span class="text-[11px] text-slate-400 font-medium">接続状況</span>
+          <div id="drawer-firebase-status" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-400 border border-slate-700/60">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+            <span>接続確認中...</span>
+          </div>
         </div>
-        <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-          <div id="drawer-goal-bar" class="bg-indigo-500 h-full w-0 transition-all duration-300"></div>
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1 flex justify-between">
-          <span id="drawer-date-text">2026年 8月6日</span>
-          <span id="drawer-clock-text" class="font-mono font-bold text-slate-300">12:00:00</span>
+
+        <div>
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span>本日の学習</span>
+            <span class="text-indigo-300 font-bold" id="drawer-today-time">0h 0m</span>
+          </div>
+          <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
+            <div id="drawer-goal-bar" class="bg-indigo-500 h-full w-0 transition-all duration-300"></div>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1 flex justify-between">
+            <span id="drawer-date-text">2026年 8月6日</span>
+            <span id="drawer-clock-text" class="font-mono font-bold text-slate-300">12:00:00</span>
+          </div>
         </div>
       </div>
     </div>
